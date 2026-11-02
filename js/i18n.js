@@ -26,6 +26,7 @@ export async function loadLang(code) {
   return dicts[code];
 }
 export function hasLang(code) { return !!dicts[code]; }
+export function dict(code) { return dicts[code] || {}; }
 
 export function detectLang(saved) {
   const q = new URLSearchParams(location.search).get('lang');

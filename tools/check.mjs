@@ -84,6 +84,15 @@ for (const l of LANGS) {
   }
 }
 
+/* translation status (i18n/status.js) */
+const STATUS = (await imp('i18n/status.js')).default;
+for (const [l, list] of Object.entries(STATUS)) {
+  if (!LANGS.includes(l) || MUST.includes(l)) { err(`status.js: "${l}" is not a language to check`); continue; }
+  list.forEach(id => { if (id !== 'ui' && !ids.has(id)) err(`status.js ${l}: "${id}" is not a word id`); });
+  const done = list.filter(id => id !== 'ui').length;
+  console.log(`   ${l}: ${done}/${WORDS.length} terms checked${list.includes('ui') ? ', screen texts checked' : ''}`);
+}
+
 /* ---------- 3. keys used by the screens ---------- */
 console.log('3. Text keys used in the code');
 const used = new Set();
