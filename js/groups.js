@@ -19,4 +19,4 @@ export const GROUP_BY_ID = Object.fromEntries(GROUPS.map(g => [g.id, g]));
 export const LESSONS = [1, 2];
 
 /* animations (js/demos/<id>.js) */
-export const DEMOS = ['hubswitch', 'cast', 'csmacd'];
+export const DEMOS = ['repeater', 'hubswitch', 'cast', 'frame', 'csmacd'];

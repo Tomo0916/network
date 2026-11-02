@@ -22,14 +22,14 @@ export const groupsIn = r => GROUPS.filter(g => WORDS.some(w => w.group === g.id
 
 /* ---------- 4-choice quiz ----------
  * wrong choices: confusable terms first, then the same group, then the same layer, then anything */
-export function distractors(w, n = 3) {
+export function distractors(w, n = 3, rnd = Math.random) {
   const out = [];
   const add = id => { if (id !== w.id && WORD_BY_ID[id] && !out.includes(id) && out.length < n) out.push(id); };
-  shuffle(w.related || []).forEach(add);
-  shuffle(WORDS.filter(x => x.group === w.group)).forEach(x => add(x.id));
+  shuffle(w.related || [], rnd).forEach(add);
+  shuffle(WORDS.filter(x => x.group === w.group), rnd).forEach(x => add(x.id));
   const layer = GROUP_BY_ID[w.group].layer;
-  shuffle(WORDS.filter(x => GROUP_BY_ID[x.group].layer === layer)).forEach(x => add(x.id));
-  shuffle(WORDS).forEach(x => add(x.id));
+  shuffle(WORDS.filter(x => GROUP_BY_ID[x.group].layer === layer), rnd).forEach(x => add(x.id));
+  shuffle(WORDS, rnd).forEach(x => add(x.id));
   return out;
 }
 /** type 'd2t' = read the explanation, choose the term · 't2d' = read the term, choose the explanation */
@@ -38,6 +38,11 @@ export function makeQuestion(id, type) {
 }
 export function makeQuiz(ids, n = 10) {
   return shuffle(ids).slice(0, n).map(id => makeQuestion(id));
+}
+
+/* ---------- paper test (same settings + version → same test) ---------- */
+export function makeTest(ids, n, format, rnd) {
+  return shuffle(ids, rnd).slice(0, n).map(id => ({ id, opts: format === 'choice' ? shuffle([id, ...distractors(WORD_BY_ID[id], 3, rnd)], rnd) : null }));
 }
 
 /* ---------- sorting game ---------- */

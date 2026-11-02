@@ -87,16 +87,19 @@ for (const l of LANGS) {
 /* ---------- 3. keys used by the screens ---------- */
 console.log('3. Text keys used in the code');
 const used = new Set();
-for (const f of ['js/student.js', ...DEMOS.map(d => `js/demos/${d}.js`)]) {
+for (const f of ['js/student.js', 'js/teacher.js', 'js/common.js', ...DEMOS.map(d => `js/demos/${d}.js`)]) {
   const src = fs.readFileSync(path.join(root, f), 'utf8');
   for (const m of src.matchAll(/\b(?:T|H|bi)\(\s*'([a-z]+(?:\.[A-Za-z0-9]+)+)'(?!\s*\+)/g)) used.add(m[1]);
-  for (const m of src.matchAll(/'((?:dm|quiz|cards|review|home|words|sort|btn|set|pres|prog|range|demos?|layer|nav|mode)\.[A-Za-z0-9]+)'(?!\s*\+)/g)) used.add(m[1]);
+  for (const m of src.matchAll(/'((?:dm|quiz|cards|review|home|words|sort|btn|set|pres|prog|range|demos?|layer|nav|mode|t|foot)\.[A-Za-z0-9]+)'(?!\s*\+)/g)) used.add(m[1]);
 }
 ['home', 'words', 'cards', 'quiz', 'sort', 'review', 'demos'].forEach(v => used.add('nav.' + v));
+['present', 'share', 'test'].forEach(v => used.add('t.' + v));
 GROUPS.forEach(g => used.add('g.' + g.id));
 LAYERS.forEach(l => used.add('layer.' + l));
 DEMOS.forEach(d => used.add('demo.' + d));
 for (let i = 0; i < 6; i++) used.add('dm.cs' + i);
+for (let i = 0; i < 5; i++) used.add('dm.fr' + i);
+['Dst', 'Src', 'Type', 'Data', 'Fcs'].forEach(f => used.add('dm.f' + f));
 used.forEach(k => { if (!(k in en)) err(`en.js is missing "${k}" (used by the app)`); });
 
 /* ---------- 4. quiz ---------- */

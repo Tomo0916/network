@@ -22,25 +22,25 @@ export const WORDS = [
   { id: 'dce', term: 'DCE', yomi: 'ディーシーイー', en: 'Data Circuit-terminating Equipment', group: 'l1', lesson: 1, related: ['nic', 'interface', 'repeater'] },
   { id: 'bps', term: 'bps', yomi: 'ビーピーエス', en: 'bits per second', group: 'l1', lesson: 1, related: ['protocol', 'mac', 'ethernet'] },
   // ---- signal problems ----
-  { id: 'attenuation', term: '減衰', yomi: 'げんすい', en: 'Attenuation', group: 'signal', lesson: 1, related: ['noise', 'collision', 'repeater'] },
-  { id: 'noise', term: 'ノイズ', en: 'Noise', group: 'signal', lesson: 1, related: ['attenuation', 'collision', 'flooding'] },
+  { id: 'attenuation', term: '減衰', yomi: 'げんすい', en: 'Attenuation', group: 'signal', lesson: 1, related: ['noise', 'collision', 'repeater'], demo: 'repeater' },
+  { id: 'noise', term: 'ノイズ', en: 'Noise', group: 'signal', lesson: 1, related: ['attenuation', 'collision', 'flooding'], demo: 'repeater' },
   { id: 'collision', term: '衝突', yomi: 'しょうとつ', en: 'Collision', group: 'signal', lesson: 1, related: ['noise', 'attenuation', 'csmacd'], demo: 'csmacd' },
   // ---- devices ----
   { id: 'hub', term: 'ハブ', en: 'Hub', group: 'devices', lesson: 1, related: ['switch', 'repeater', 'flooding'], demo: 'hubswitch' },
-  { id: 'repeater', term: 'リピーター', en: 'Repeater', group: 'devices', lesson: 1, related: ['hub', 'switch', 'attenuation'] },
+  { id: 'repeater', term: 'リピーター', en: 'Repeater', group: 'devices', lesson: 1, related: ['hub', 'switch', 'attenuation'], demo: 'repeater' },
   { id: 'switch', term: 'スイッチ', en: 'Switch', group: 'devices', lesson: 1, related: ['hub', 'repeater', 'flooding'], demo: 'hubswitch' },
   { id: 'flooding', term: 'フラッディング', en: 'Flooding', group: 'devices', lesson: 1, related: ['broadcast', 'hub', 'multicast'], demo: 'hubswitch' },
   // ---- Layer 2 basics ----
   { id: 'protocol', term: 'プロトコル', en: 'Protocol', group: 'l2', lesson: 2, related: ['ethernet', 'framing', 'csmacd'] },
-  { id: 'ethernet', term: 'イーサネット', en: 'Ethernet', group: 'l2', lesson: 2, related: ['protocol', 'framing', 'nic'] },
-  { id: 'framing', term: 'フレーミング', en: 'Framing', group: 'l2', lesson: 2, related: ['preamble', 'protocol', 'ethernet'] },
-  { id: 'preamble', term: 'プリアンブル', en: 'Preamble', group: 'l2', lesson: 2, related: ['framing', 'mac', 'protocol'] },
+  { id: 'ethernet', term: 'イーサネット', en: 'Ethernet', group: 'l2', lesson: 2, related: ['protocol', 'framing', 'nic'], demo: 'frame' },
+  { id: 'framing', term: 'フレーミング', en: 'Framing', group: 'l2', lesson: 2, related: ['preamble', 'protocol', 'ethernet'], demo: 'frame' },
+  { id: 'preamble', term: 'プリアンブル', en: 'Preamble', group: 'l2', lesson: 2, related: ['framing', 'mac', 'protocol'], demo: 'frame' },
   // ---- addressing ----
   { id: 'unicast', term: 'ユニキャスト', en: 'Unicast', group: 'addressing', lesson: 2, related: ['broadcast', 'multicast', 'flooding'], demo: 'cast' },
   { id: 'broadcast', term: 'ブロードキャスト', en: 'Broadcast', group: 'addressing', lesson: 2, related: ['multicast', 'unicast', 'flooding'], demo: 'cast' },
   { id: 'multicast', term: 'マルチキャスト', en: 'Multicast', group: 'addressing', lesson: 2, related: ['broadcast', 'unicast', 'flooding'], demo: 'cast' },
   // ---- MAC address and rules ----
-  { id: 'mac', term: 'MACアドレス', yomi: 'マックアドレス', en: 'MAC address', group: 'mac', lesson: 2, related: ['nic', 'macfilter', 'bps'] },
+  { id: 'mac', term: 'MACアドレス', yomi: 'マックアドレス', en: 'MAC address', group: 'mac', lesson: 2, related: ['nic', 'macfilter', 'bps'], demo: 'frame' },
   { id: 'csmacd', term: 'CSMA/CD', yomi: 'シーエスエムエー・シーディー', en: 'Carrier Sense Multiple Access / Collision Detection', group: 'mac', lesson: 2, related: ['collision', 'protocol', 'flooding'], demo: 'csmacd' },
   { id: 'macfilter', term: 'MACアドレスフィルタリング', yomi: 'マックアドレスフィルタリング', en: 'MAC address filtering', group: 'mac', lesson: 2, related: ['mac', 'switch', 'csmacd'] }
 ];

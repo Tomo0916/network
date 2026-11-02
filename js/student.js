@@ -10,10 +10,11 @@
  * ========================================================= */
 import { LANGS, loadLang, detectLang, htmlLang, t, th, esc } from './i18n.js';
 import { WORDS, WORD_BY_ID } from './words.js';
-import { GROUP_BY_ID, LAYERS, DEMOS } from './groups.js';
+import { GROUP_BY_ID, DEMOS } from './groups.js';
 import { RANGES, isRange, wordsIn, groupsIn, makeQuiz, makeSort } from './quiz.js';
 import { loadSettings, saveSettings, loadProgress, saveProgress, recordAnswer, dueWords } from './store.js';
 import { I, applySettings, langSelect, langOptions, modal, closeModal } from './ui.js';
+import { termHTML, enName, rangeLabel as rangeLabelOf, speakBtn as speakBtnOf, speak } from './common.js';
 
 const S = {
   settings: loadSettings(null),
@@ -46,23 +47,12 @@ function bi(k, v, tag = 'span') {
 const save = () => saveProgress(S.progress);
 
 /* ---------- terms ---------- */
-const KANJI = /[一-鿿]/;
-function termHTML(w, cls = '') {
-  const word = KANJI.test(w.term) && w.yomi ? `<ruby>${esc(w.term)}<rt>${esc(w.yomi)}</rt></ruby>` : esc(w.term);
-  const yomi = !KANJI.test(w.term) && w.yomi ? `<span class="yomi">${esc(w.yomi)}</span>` : '';
-  return `<span class="term ${cls}" lang="ja">${word}</span>${yomi}`;
-}
-const enName = w => `<span class="en-name" lang="en">${esc(w.en)}</span>`;
+const speakBtn = w => speakBtnOf(w, T('btn.listen'));
 const groupTag = g => `<span class="gtag" style="--gc:var(--g-${g.id})">${H('g.' + g.id)}</span>`;
 const words = () => wordsIn(S.settings.range);
 
 /* ---------- range ---------- */
-function rangeLabel(r) {
-  if (r === 'all') return T('range.all');
-  if (LAYERS.includes(r)) return T('layer.' + r);
-  if (r.startsWith('lesson-')) return T('range.lesson', { n: r.slice(7) });
-  return T('g.' + r.slice(2));
-}
+const rangeLabel = r => rangeLabelOf(r, T);
 function rangeSelect() {
   const opt = r => `<option value="${r}" ${r === S.settings.range ? 'selected' : ''}>${esc(rangeLabel(r))} (${esc(T('range.words', { n: wordsIn(r).length }))})</option>`;
   return `<label class="range"><span>${H('range.label')}</span><select data-act="range" aria-label="${esc(T('range.label'))}">
@@ -109,7 +99,7 @@ function headerHTML() {
   </div></header>`;
 }
 function footerHTML() {
-  return `<footer class="foot"><span>${H('foot.saved')}</span><a href="https://github.com/Tomo0916/network">GitHub</a></footer>`;
+  return `<footer class="foot"><span>${H('foot.saved')}</span><span><a href="teacher.html">${H('foot.teacher')}</a> · <a href="https://github.com/Tomo0916/network">GitHub</a></span></footer>`;
 }
 const pageHead = (key, sub) => `<div class="page-head"><div><h1 class="page-title">${H(key)}</h1>${sub ? `<p class="muted">${sub}</p>` : ''}</div>${rangeSelect()}</div>`;
 
@@ -153,13 +143,27 @@ function homeHTML() {
       ${mode('sort', I.sort, 'nav.sort', 'mode.sort')}
       ${mode('demos/' + DEMOS[0], I.play, 'nav.demos', 'mode.demos')}
     </section>
+    <h2 class="sec-title">${H('home.byGroup')}</h2>
+    <section class="card gprog">${groupsIn(S.settings.range).map(g => {
+      const gw = ws.filter(w => w.group === g.id), gk = gw.filter(w => S.progress.known[w.id]).length;
+      let o = 0, n = 0; gw.forEach(w => { const st = S.progress.stats[w.id]; if (st) { o += st.ok; n += st.ok + st.ng; } });
+      return `<div class="gprog-row" style="--gc:var(--g-${g.id})">
+        <span class="gtag">${H('g.' + g.id)}</span>
+        <div class="bar"><i style="width:${Math.round(gk / gw.length * 100)}%"></i></div>
+        <span class="count">${gk}/${gw.length}</span>
+        <span class="count">${n ? Math.round(o / n * 100) + '%' : '—'}</span>
+        <a class="btn btn-ghost btn-xs" href="?range=g-${g.id}#/quiz">${I.quiz}${H('nav.quiz')}</a>
+      </div>`;
+    }).join('')}
+      <p class="muted small">${H('home.byGroupTip')}</p>
+    </section>
   </main>`;
 }
 
 /* ---------- word list ---------- */
 function wordCard(w) {
   return `<article class="card wcard" style="--gc:var(--g-${w.group})">
-    <div class="wcard-head"><div>${termHTML(w)}${enName(w)}</div>${S.progress.known[w.id] ? `<span class="tag ok">${I.check}${H('cards.known')}</span>` : ''}</div>
+    <div class="wcard-head"><div class="term-row"><div>${termHTML(w)}${enName(w)}</div>${speakBtn(w)}</div>${S.progress.known[w.id] ? `<span class="tag ok">${I.check}${H('cards.known')}</span>` : ''}</div>
     <p class="desc">${bi(`w.${w.id}.desc`)}</p>
     <p class="tip"><b>${H('words.tip')}</b>${bi(`w.${w.id}.tip`)}</p>
     ${w.demo ? `<a class="linkbtn" href="#/demos/${w.demo}">${I.play} ${H('words.seeDemo')}</a>` : ''}
@@ -206,8 +210,8 @@ function cardsHTML() {
       <div class="cardbar">${filt}<span class="count">${C.i + 1} / ${d.length}</span></div>
       <div class="flip ${C.flipped ? 'is-back' : ''}" id="flip" role="button" tabindex="0" data-act="flip" aria-label="${esc(T('cards.flip'))}" style="--gc:var(--g-${w.group})">
         <div class="inner">
-          <div class="face front">${groupTag(GROUP_BY_ID[w.group])}<div class="big-term">${termHTML(w)}</div>${enName(w)}${k ? `<span class="tag ok">${I.check}${H('cards.known')}</span>` : ''}<span class="hint">${H('cards.flip')}</span></div>
-          <div class="face back">${groupTag(GROUP_BY_ID[w.group])}<div class="mid-term">${termHTML(w)}</div><p class="desc">${bi(`w.${w.id}.desc`)}</p><p class="tip"><b>${H('words.tip')}</b>${bi(`w.${w.id}.tip`)}</p></div>
+          <div class="face front">${groupTag(GROUP_BY_ID[w.group])}<div class="big-term">${termHTML(w)}</div>${enName(w)}${speakBtn(w)}${k ? `<span class="tag ok">${I.check}${H('cards.known')}</span>` : ''}<span class="hint">${H('cards.flip')}</span></div>
+          <div class="face back">${groupTag(GROUP_BY_ID[w.group])}<div class="term-row"><div class="mid-term">${termHTML(w)}</div>${speakBtn(w)}</div><p class="desc">${bi(`w.${w.id}.desc`)}</p><p class="tip"><b>${H('words.tip')}</b>${bi(`w.${w.id}.tip`)}</p></div>
         </div>
       </div>
       <div class="cardbar">
@@ -269,7 +273,7 @@ function quizHTML() {
     ${box}
     <div class="opts">${q.opts.map(opt).join('')}</div>
     ${a ? `<div class="fb ${ok ? 'ok' : 'ng'}" role="status">
-      <p class="verdict">${ok ? I.check + H('quiz.ok') : I.x + H('quiz.ng') + ' ' + th('quiz.answerIs', L(), { t: esc(w.term) })}</p>
+      <p class="verdict">${ok ? I.check + H('quiz.ok') : I.x + H('quiz.ng') + ' ' + th('quiz.answerIs', L(), { t: esc(w.term) })} ${speakBtn(w)}</p>
       ${q.type === 't2d' ? '' : `<p>${bi(`w.${w.id}.desc`)}</p>`}
       <p class="tip"><b>${H('words.tip')}</b>${bi(`w.${w.id}.tip`)}</p>
       <button class="btn btn-primary" data-act="quizNext" id="next-btn">${H(Q.i < Q.list.length - 1 ? 'btn.next' : 'btn.results')}${I.next}</button></div>` : ''}
@@ -339,6 +343,7 @@ async function mountDemo(id) {
 const actions = {
   settings() { openSettings(); },
   closeModal,
+  speak(el) { speak(WORD_BY_ID[el.dataset.id]); },
   flip() { S.cards.flipped = !S.cards.flipped; const f = document.getElementById('flip'); if (f) f.classList.toggle('is-back', S.cards.flipped); },
   cardPrev() { S.cards.i--; S.cards.flipped = false; render(); },
   cardNext() { S.cards.i++; S.cards.flipped = false; render(); },
