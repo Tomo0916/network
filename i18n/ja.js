@@ -15,14 +15,6 @@ export default {
   "home.modes": "学び方",
   "foot.saved": "学習の記録は、このブラウザの中だけに保存されます。",
   "misc.loading": "読み込み中…",
-  "misc.draft": "未確認",
-  "misc.draftTip": "この翻訳は、まだその言語を話す人が確認していません。",
-  "misc.draftNote": "この言語の文章は下書きです。",
-  "check.title": "翻訳の確認",
-  "check.sub": "英語と見比べて、直すところや、正しい用語を先生に伝えてください。",
-  "check.checked": "確認済み",
-  "check.words": "用語",
-  "check.ui": "画面の文言",
 
   /* ---- navigation ---- */
   "nav.home": "ホーム",

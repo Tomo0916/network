@@ -1,5 +1,5 @@
 /* ne — Network Words interface and term text (नेपाली).
- * Draft translation by Claude. A native speaker checks it: see i18n/status.js and #/check/ne.
+ * Translation by Claude (AI). Language: ne.
  * Edit freely; run  node tools/check.mjs  afterwards.
  * {name} = a value inserted by the app. */
 export default {
@@ -16,14 +16,6 @@ export default {
   "home.modes": "सिक्ने तरिका",
   "foot.saved": "तपाईंको प्रगति यो ब्राउजरमा मात्र सुरक्षित हुन्छ।",
   "misc.loading": "लोड हुँदैछ…",
-  "misc.draft": "मस्यौदा",
-  "misc.draftTip": "यो अनुवाद अझै मातृभाषीले जाँच गरेको छैन।",
-  "misc.draftNote": "यो भाषाका लेखहरू मस्यौदा हुन्।",
-  "check.title": "अनुवाद जाँच",
-  "check.sub": "हरेक लेखलाई अंग्रेजीसँग दाँज्नुहोस्। के सच्याउनुपर्छ वा कुन शब्द सही छन् भनेर शिक्षकलाई भन्नुहोस्।",
-  "check.checked": "जाँच भयो",
-  "check.words": "शब्दहरू",
-  "check.ui": "स्क्रिनका लेखहरू",
 
   /* ---- navigation ---- */
   "nav.home": "गृहपृष्ठ",

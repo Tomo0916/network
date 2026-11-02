@@ -8,13 +8,12 @@
  * URL options:  ?lang=vi   ?range=lesson-2   ?present=1
  * Progress is stored by word id, so switching language never touches it.
  * ========================================================= */
-import { LANGS, loadLang, hasLang, detectLang, htmlLang, t, th, esc, dict } from './i18n.js';
+import { LANGS, loadLang, detectLang, htmlLang, t, th, esc } from './i18n.js';
 import { WORDS, WORD_BY_ID } from './words.js';
 import { GROUP_BY_ID, LAYERS, DEMOS } from './groups.js';
 import { RANGES, isRange, wordsIn, groupsIn, makeQuiz, makeSort } from './quiz.js';
 import { loadSettings, saveSettings, loadProgress, saveProgress, recordAnswer, dueWords } from './store.js';
 import { I, applySettings, langSelect, langOptions, modal, closeModal } from './ui.js';
-import STATUS from '../i18n/status.js';
 
 const S = {
   settings: loadSettings(null),
@@ -37,15 +36,9 @@ const T = (k, v) => t(k, L(), v);
 const escVars = v => v && Object.fromEntries(Object.entries(v).map(([a, b]) => [a, esc(b)]));
 /** label as HTML (furigana kept, variables escaped) */
 const H = (k, v) => th(k, L(), escVars(v));
-/* ---------- draft translations ----------
- * i18n/status.js lists, per language, the word ids (and 'ui') a native speaker has checked.
- * Everything else in those languages is a draft and gets a small mark. */
-const isDraft = (lang, id) => !!STATUS[lang] && !STATUS[lang].includes(id);
-const draftMark = () => `<span class="draft" title="${esc(T('misc.draftTip'))}">${H('misc.draft')}</span>`;
 /** text in the main language + the second language underneath (if chosen) */
 function bi(k, v, tag = 'span') {
-  const m = /^w\.([a-z0-9]+)\./.exec(k);
-  const one = lang => th(k, lang, escVars(v)) + (m && isDraft(lang, m[1]) ? draftMark() : '');
+  const one = lang => th(k, lang, escVars(v));
   const sec = S.settings.second;
   if (!sec || sec === L()) return one(L());
   return `${one(L())}<${tag} class="bi" lang="${htmlLang(sec)}">${one(sec)}</${tag}>`;
@@ -81,7 +74,6 @@ function rangeSelect() {
 function parseRoute() {
   const h = location.hash.replace(/^#\/?/, '').split('/');
   if (['words', 'cards', 'quiz', 'sort', 'review'].includes(h[0])) return { view: h[0] };
-  if (h[0] === 'check') return { view: 'check', lang: STATUS[h[1]] ? h[1] : null };
   if (h[0] === 'demos') return { view: 'demos', id: DEMOS.includes(h[1]) ? h[1] : DEMOS[0] };
   return { view: 'home' };
 }
@@ -95,8 +87,8 @@ window.addEventListener('hashchange', () => {
 function render() {
   applySettings(S.settings, htmlLang(L()));
   const v = S.route.view;
-  const body = { home: homeHTML, words: wordsHTML, cards: cardsHTML, quiz: quizHTML, review: quizHTML, sort: sortHTML, demos: demosHTML, check: checkHTML }[v]();
-  document.title = (v === 'home' ? '' : T(v === 'check' ? 'check.title' : 'nav.' + v) + ' · ') + T('app.name');
+  const body = { home: homeHTML, words: wordsHTML, cards: cardsHTML, quiz: quizHTML, review: quizHTML, sort: sortHTML, demos: demosHTML }[v]();
+  document.title = (v === 'home' ? '' : T('nav.' + v) + ' · ') + T('app.name');
   app.innerHTML = headerHTML() + body + footerHTML();
   if (v === 'demos') mountDemo(S.route.id);
   if (v === 'words') { const s = document.getElementById('search'); if (s && S.query) { s.focus(); s.setSelectionRange(S.query.length, S.query.length); } }
@@ -117,8 +109,7 @@ function headerHTML() {
   </div></header>`;
 }
 function footerHTML() {
-  const note = isDraft(L(), 'ui') ? `<span class="draft-note">${draftMark()} ${H('misc.draftNote')} <a href="#/check/${L()}">${H('check.title')}</a></span>` : '';
-  return `<footer class="foot"><span>${H('foot.saved')}</span>${note}<a href="https://github.com/Tomo0916/network">GitHub</a></footer>`;
+  return `<footer class="foot"><span>${H('foot.saved')}</span><a href="https://github.com/Tomo0916/network">GitHub</a></footer>`;
 }
 const pageHead = (key, sub) => `<div class="page-head"><div><h1 class="page-title">${H(key)}</h1>${sub ? `<p class="muted">${sub}</p>` : ''}</div>${rangeSelect()}</div>`;
 
@@ -342,28 +333,6 @@ async function mountDemo(id) {
   });
 }
 
-/* ---------- translation check (for native speakers) ----------
- * #/check/<lang>: English and the translation side by side, with what is checked */
-function checkHTML() {
-  const langs = Object.keys(STATUS);
-  const lang = S.route.lang || (STATUS[L()] ? L() : langs[0]);
-  if (!hasLang(lang)) { loadLang(lang).then(render); return `<main class="wrap"><div class="loading"><div class="spinner"></div></div></main>`; }
-  const name = LANGS.find(x => x.code === lang).name;
-  const cell = (k, l) => `<td lang="${htmlLang(l)}">${th(k, l)}</td>`;
-  const ok = id => isDraft(lang, id) ? draftMark() : `<span class="tag ok">${I.check}${H('check.checked')}</span>`;
-  const wordRows = WORDS.map(w => `<tr><th rowspan="2">${termHTML(w)}${enName(w)}<code>${w.id}</code><div>${ok(w.id)}</div></th>${cell(`w.${w.id}.desc`, 'en')}${cell(`w.${w.id}.desc`, lang)}</tr>
-    <tr>${cell(`w.${w.id}.tip`, 'en')}${cell(`w.${w.id}.tip`, lang)}</tr>`).join('');
-  const uiKeys = Object.keys(dict('en')).filter(k => !k.startsWith('w.'));
-  const uiRows = uiKeys.map(k => `<tr><th><code>${k}</code></th>${cell(k, 'en')}${cell(k, lang)}</tr>`).join('');
-  return `<main class="wrap"><div class="page-head"><div><h1 class="page-title">${H('check.title')}</h1><p class="muted">${H('check.sub')}</p></div>
-      <label class="range"><span>${H('nav.language')}</span><select data-act="checkLang">${langs.map(l => `<option value="${l}" ${l === lang ? 'selected' : ''}>${esc(LANGS.find(x => x.code === l).name)}</option>`).join('')}</select></label></div>
-    <h2 class="sec-title">${H('check.words')} <span class="muted small">${WORDS.length - WORDS.filter(w => isDraft(lang, w.id)).length} / ${WORDS.length}</span></h2>
-    <div class="table-scroll"><table class="check"><thead><tr><th></th><th>English</th><th>${esc(name)}</th></tr></thead><tbody>${wordRows}</tbody></table></div>
-    <h2 class="sec-title">${H('check.ui')} ${ok('ui')}</h2>
-    <div class="table-scroll"><table class="check"><thead><tr><th></th><th>English</th><th>${esc(name)}</th></tr></thead><tbody>${uiRows}</tbody></table></div>
-  </main>`;
-}
-
 /* =========================================================
  * EVENTS
  * ========================================================= */
@@ -412,7 +381,6 @@ document.addEventListener('change', e => {
     if (location.search) history.replaceState(null, '', location.pathname + location.hash);
     render(); return;
   }
-  if (el.matches('[data-act="checkLang"]')) { location.hash = '#/check/' + el.value; return; }
   if (el.matches('[data-act="cfilter"]')) { S.cards.onlyNew = el.value === 'new'; S.cards.i = 0; S.cards.flipped = false; render(); return; }
   if (el.dataset.setting) {
     const k = el.dataset.setting;

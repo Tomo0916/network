@@ -1,5 +1,5 @@
 /* vi — Network Words interface and term text (Tiếng Việt).
- * Draft translation by Claude. A native speaker checks it: see i18n/status.js and #/check/vi.
+ * Translation by Claude (AI). Language: vi.
  * Edit freely; run  node tools/check.mjs  afterwards.
  * {name} = a value inserted by the app. */
 export default {
@@ -16,14 +16,6 @@ export default {
   "home.modes": "Cách học",
   "foot.saved": "Tiến độ học chỉ được lưu trong trình duyệt này.",
   "misc.loading": "Đang tải…",
-  "misc.draft": "bản nháp",
-  "misc.draftTip": "Bản dịch này chưa được người bản xứ kiểm tra.",
-  "misc.draftNote": "Các nội dung bằng ngôn ngữ này là bản nháp.",
-  "check.title": "Kiểm tra bản dịch",
-  "check.sub": "So sánh từng nội dung với tiếng Anh. Hãy báo cho giáo viên chỗ cần sửa hoặc những từ đã đúng.",
-  "check.checked": "đã kiểm tra",
-  "check.words": "Thuật ngữ",
-  "check.ui": "Nội dung trên màn hình",
 
   /* ---- navigation ---- */
   "nav.home": "Trang chủ",

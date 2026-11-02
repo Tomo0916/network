@@ -334,19 +334,6 @@ body.presenter .opt { font-size: 1.15rem; }
 }
 @media (prefers-reduced-motion: reduce) { .flip .inner, .bar > i { transition: none; } }
 
-/* draft translations and the check page */
-.draft { display: inline-block; margin-left: 6px; font-size: .68rem; font-weight: 700; color: var(--warn); background: var(--warn-soft); border-radius: 99px; padding: 0 7px; vertical-align: 1px; white-space: nowrap; cursor: help; }
-.draft-note { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
-.draft-note .draft { margin-left: 0; }
-.table-scroll { overflow-x: auto; margin-bottom: 24px; }
-table.check { border-collapse: collapse; width: 100%; min-width: 640px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; font-size: .92rem; }
-table.check th, table.check td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
-table.check thead th { background: var(--surface-2); font-size: .78rem; color: var(--ink-3); }
-table.check tbody th { width: 200px; font-weight: 400; }
-table.check tbody th .term { font-size: 1.05rem; }
-table.check code { font-size: .75rem; color: var(--ink-3); display: block; margin: 2px 0 4px; }
-table.check td:nth-child(2), table.check tr:nth-child(even) td:first-child { color: var(--ink-2); }
-
 /* long labels in some languages: keep the header and range menu inside the screen */
 .topnav { min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .topnav::-webkit-scrollbar { display: none; }

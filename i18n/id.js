@@ -1,5 +1,5 @@
 /* id — Network Words interface and term text (Bahasa Indonesia).
- * Draft translation by Claude. A native speaker checks it: see i18n/status.js and #/check/id.
+ * Translation by Claude (AI). Language: id.
  * Edit freely; run  node tools/check.mjs  afterwards.
  * {name} = a value inserted by the app. */
 export default {
@@ -16,14 +16,6 @@ export default {
   "home.modes": "Cara belajar",
   "foot.saved": "Kemajuanmu hanya disimpan di browser ini.",
   "misc.loading": "Memuat…",
-  "misc.draft": "draf",
-  "misc.draftTip": "Terjemahan ini belum diperiksa oleh penutur asli.",
-  "misc.draftNote": "Teks dalam bahasa ini masih draf.",
-  "check.title": "Periksa terjemahan",
-  "check.sub": "Bandingkan setiap teks dengan bahasa Inggris. Beri tahu gurumu apa yang perlu diperbaiki, atau kata mana yang sudah benar.",
-  "check.checked": "sudah diperiksa",
-  "check.words": "Istilah",
-  "check.ui": "Teks layar",
 
   /* ---- navigation ---- */
   "nav.home": "Beranda",

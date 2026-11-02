@@ -1,5 +1,5 @@
 /* my — Network Words interface and term text (မြန်မာ, Unicode — not Zawgyi).
- * Draft translation by Claude. A native speaker checks it: see i18n/status.js and #/check/my.
+ * Translation by Claude (AI). Language: my.
  * Edit freely; run  node tools/check.mjs  afterwards.
  * {name} = a value inserted by the app. */
 export default {
@@ -16,14 +16,6 @@ export default {
   "home.modes": "လေ့လာနည်းများ",
   "foot.saved": "သင်၏ တိုးတက်မှုကို ဤဘရောက်ဆာတွင်သာ သိမ်းဆည်းထားသည်။",
   "misc.loading": "ဖွင့်နေသည်…",
-  "misc.draft": "မူကြမ်း",
-  "misc.draftTip": "ဤဘာသာပြန်ကို မိခင်ဘာသာစကားပြောသူ မစစ်ဆေးရသေးပါ။",
-  "misc.draftNote": "ဤဘာသာစကားရှိ စာသားများသည် မူကြမ်းများ ဖြစ်သည်။",
-  "check.title": "ဘာသာပြန် စစ်ဆေးခြင်း",
-  "check.sub": "စာသားတစ်ခုစီကို အင်္ဂလိပ်နှင့် နှိုင်းယှဉ်ပါ။ ပြင်ရမည့်နေရာ သို့မဟုတ် မှန်ကန်သော စကားလုံးများကို ဆရာ့ကို ပြောပြပါ။",
-  "check.checked": "စစ်ဆေးပြီး",
-  "check.words": "ဝေါဟာရများ",
-  "check.ui": "မျက်နှာပြင် စာသားများ",
 
   /* ---- navigation ---- */
   "nav.home": "ပင်မစာမျက်နှာ",

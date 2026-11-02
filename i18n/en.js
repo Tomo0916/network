@@ -16,14 +16,6 @@ export default {
   "home.modes": "Ways to learn",
   "foot.saved": "Your progress is saved only in this browser.",
   "misc.loading": "Loading…",
-  "misc.draft": "draft",
-  "misc.draftTip": "This translation has not been checked by a native speaker yet.",
-  "misc.draftNote": "The texts in this language are drafts.",
-  "check.title": "Check translations",
-  "check.sub": "Compare each text with English. Tell your teacher what to fix, or which words are correct.",
-  "check.checked": "checked",
-  "check.words": "Terms",
-  "check.ui": "Screen texts",
 
   /* ---- navigation ---- */
   "nav.home": "Home",

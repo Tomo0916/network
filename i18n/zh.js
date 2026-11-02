@@ -1,5 +1,5 @@
 /* zh — Network Words interface and term text (中文 简体).
- * Draft translation by Claude. A native speaker checks it: see i18n/status.js and #/check/zh.
+ * Translation by Claude (AI). Language: zh.
  * Edit freely; run  node tools/check.mjs  afterwards.
  * {name} = a value inserted by the app. No Japanese kana in this file. */
 export default {
@@ -16,14 +16,6 @@ export default {
   "home.modes": "学习方式",
   "foot.saved": "学习记录只保存在这个浏览器中。",
   "misc.loading": "加载中…",
-  "misc.draft": "草稿",
-  "misc.draftTip": "这个翻译还没有经过母语者确认。",
-  "misc.draftNote": "这种语言的文字是草稿。",
-  "check.title": "检查翻译",
-  "check.sub": "请把每段文字和英文对比。告诉老师哪里需要修改，或者哪些词是正确的。",
-  "check.checked": "已确认",
-  "check.words": "术语",
-  "check.ui": "界面文字",
 
   /* ---- navigation ---- */
   "nav.home": "首页",

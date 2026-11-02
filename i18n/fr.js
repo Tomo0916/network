@@ -1,5 +1,5 @@
 /* fr — Network Words interface and term text.
- * Draft translation by Claude. A native speaker checks it: see i18n/status.js and #/check/fr.
+ * Translation by Claude (AI). Language: fr.
  * Edit freely; run  node tools/check.mjs  afterwards.
  * {name} = a value inserted by the app. */
 export default {
@@ -16,14 +16,6 @@ export default {
   "home.modes": "Façons d'apprendre",
   "foot.saved": "Votre progression est enregistrée uniquement dans ce navigateur.",
   "misc.loading": "Chargement…",
-  "misc.draft": "brouillon",
-  "misc.draftTip": "Cette traduction n'a pas encore été vérifiée par un locuteur natif.",
-  "misc.draftNote": "Les textes dans cette langue sont des brouillons.",
-  "check.title": "Vérifier les traductions",
-  "check.sub": "Comparez chaque texte avec l'anglais. Dites à votre professeur ce qu'il faut corriger, ou quels mots sont corrects.",
-  "check.checked": "vérifié",
-  "check.words": "Termes",
-  "check.ui": "Textes de l'écran",
 
   /* ---- navigation ---- */
   "nav.home": "Accueil",

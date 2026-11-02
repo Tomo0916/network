@@ -1,5 +1,5 @@
 /* bn — Network Words interface and term text (বাংলা).
- * Draft translation by Claude. A native speaker checks it: see i18n/status.js and #/check/bn.
+ * Translation by Claude (AI). Language: bn.
  * Edit freely; run  node tools/check.mjs  afterwards.
  * {name} = a value inserted by the app. */
 export default {
@@ -16,14 +16,6 @@ export default {
   "home.modes": "শেখার উপায়",
   "foot.saved": "আপনার অগ্রগতি শুধু এই ব্রাউজারে সংরক্ষিত থাকে।",
   "misc.loading": "লোড হচ্ছে…",
-  "misc.draft": "খসড়া",
-  "misc.draftTip": "এই অনুবাদটি এখনও কোনো মাতৃভাষী পরীক্ষা করেননি।",
-  "misc.draftNote": "এই ভাষার লেখাগুলো খসড়া।",
-  "check.title": "অনুবাদ যাচাই",
-  "check.sub": "প্রতিটি লেখা ইংরেজির সাথে মিলিয়ে দেখুন। কী ঠিক করতে হবে বা কোন শব্দ সঠিক, তা শিক্ষককে জানান।",
-  "check.checked": "যাচাই করা হয়েছে",
-  "check.words": "শব্দ",
-  "check.ui": "স্ক্রিনের লেখা",
 
   /* ---- navigation ---- */
   "nav.home": "হোম",

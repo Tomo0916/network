@@ -1,5 +1,5 @@
 /* si — Network Words interface and term text (සිංහල).
- * Draft translation by Claude. A native speaker checks it: see i18n/status.js and #/check/si.
+ * Translation by Claude (AI). Language: si.
  * Edit freely; run  node tools/check.mjs  afterwards.
  * {name} = a value inserted by the app. */
 export default {
@@ -16,14 +16,6 @@ export default {
   "home.modes": "ඉගෙන ගන්නා ක්‍රම",
   "foot.saved": "ඔබේ ප්‍රගතිය මෙම බ්‍රවුසරයේ පමණක් සුරැකේ.",
   "misc.loading": "පූරණය වෙමින්…",
-  "misc.draft": "කෙටුම්පත",
-  "misc.draftTip": "මෙම පරිවර්තනය තවම මව් භාෂාව කතා කරන කෙනෙකු පරීක්ෂා කර නැත.",
-  "misc.draftNote": "මෙම භාෂාවේ පාඨ කෙටුම්පත් වේ.",
-  "check.title": "පරිවර්තන පරීක්ෂාව",
-  "check.sub": "සෑම පාඨයක්ම ඉංග්‍රීසි සමඟ සසඳන්න. නිවැරදි කළ යුතු දේ හෝ නිවැරදි වචන මොනවාදැයි ගුරුවරයාට කියන්න.",
-  "check.checked": "පරීක්ෂා කළා",
-  "check.words": "වචන",
-  "check.ui": "තිරයේ පාඨ",
 
   /* ---- navigation ---- */
   "nav.home": "මුල් පිටුව",
