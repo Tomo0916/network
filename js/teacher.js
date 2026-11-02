@@ -8,7 +8,7 @@
 import { LANGS, loadLang, detectLang, htmlLang, t, th, esc } from './i18n.js';
 import { WORD_BY_ID } from './words.js';
 import { DEMOS } from './groups.js';
-import { RANGES, isRange, wordsIn, makeTest } from './quiz.js';
+import { RANGES, isRange, wordsIn, makeTest, scenesIn } from './quiz.js';
 import { Store, loadSettings, saveSettings } from './store.js';
 import { I, applySettings, langSelect, shuffle, seededRandom, toast } from './ui.js';
 import { termHTML, enName, rangeLabel as rangeLabelOf, speakBtn as speakBtnOf, speak } from './common.js';
@@ -130,7 +130,9 @@ async function drawQR(target = 'qr') {
 /* ---------- paper test ---------- */
 const LETTERS = ['A', 'B', 'C', 'D'];
 function testHTML() {
-  const ws = wordsIn(S.t.range), n = Math.min(Number(S.t.count), ws.length);
+  const ws = wordsIn(S.t.range);
+  const pool = S.t.format === 'scene' ? scenesIn(ws.map(w => w.id)).length : ws.length;
+  const n = Math.min(Number(S.t.count), pool);
   const tl = S.t.tlang;
   const rnd = seededRandom([S.t.range, S.t.format, n, S.t.version].join('|'));
   const qs = makeTest(ws.map(w => w.id), n, S.t.format, rnd);
@@ -141,23 +143,23 @@ function testHTML() {
     </header>`;
   const q = (x, i) => {
     const w = WORD_BY_ID[x.id];
-    return `<li class="tq"><div class="tq-desc">${th(`w.${w.id}.desc`, tl)}</div>${S.t.format === 'choice'
+    return `<li class="tq"><div class="tq-desc">${th(x.scene ? 's.' + x.scene : `w.${w.id}.desc`, tl)}</div>${S.t.format !== 'write'
       ? `<div class="tq-opts">${x.opts.map((id, j) => `<span><b>${LETTERS[j]}</b> ${esc(WORD_BY_ID[id].term)}</span>`).join('')}</div><div class="tq-ans">(&nbsp;&nbsp;&nbsp;&nbsp;)</div>`
       : `<div class="tq-line"></div>`}</li>`;
   };
-  const a = (x, i) => { const w = WORD_BY_ID[x.id]; return `<li>${S.t.format === 'choice' ? `<b>${LETTERS[x.opts.indexOf(x.id)]}</b> ` : ''}${termHTML(w)} <span class="muted">${esc(w.en)}</span></li>`; };
+  const a = (x, i) => { const w = WORD_BY_ID[x.id]; return `<li>${S.t.format !== 'write' ? `<b>${LETTERS[x.opts.indexOf(x.id)]}</b> ` : ''}${termHTML(w)} <span class="muted">${esc(w.en)}</span></li>`; };
   return `<main class="wrap"><h1 class="page-title">${H('t.test')}</h1><p class="muted">${H('t.testSub')}</p>
     <div class="test-layout">
       <div class="card panel form test-panel">
         ${rangeSelect()}
-        ${field(H('t.count'), select('count', [5, 10, 15, 20, 30].filter(c => c <= ws.length || c === 5).map(c => [c, String(Math.min(c, ws.length))])))}
-        ${field(H('t.format'), select('format', [['write', T('t.fWrite')], ['choice', T('t.fChoice')]]))}
+        ${field(H('t.count'), select('count', [5, 10, 15, 20, 30, 40].filter(c => c <= pool || c === 5).map(c => [c, String(Math.min(c, pool))])))}
+        ${field(H('t.format'), select('format', [['write', T('t.fWrite')], ['choice', T('t.fChoice')], ['scene', T('t.fScene')]]))}
         ${field(H('t.descLang'), select('tlang', LANGS.map(l => [l.code, l.name])))}
         ${field(H('t.version'), select('version', ['A', 'B', 'C', 'D'].map(v => [v, v])))}
         <button class="btn btn-primary" data-act="print">${I.print}${H('t.print')}</button>
       </div>
       <div class="paper" lang="${htmlLang(tl)}">
-        <section class="sheet">${head(false)}<p class="tq-inst">${TT(S.t.format === 'choice' ? 't.qChoice' : 't.qWrite')}</p><ol class="tqs">${qs.map(q).join('')}</ol></section>
+        <section class="sheet">${head(false)}<p class="tq-inst">${TT({ choice: 't.qChoice', scene: 't.qScene' }[S.t.format] || 't.qWrite')}</p><ol class="tqs">${qs.map(q).join('')}</ol></section>
         <section class="sheet">${head(true)}<ol class="tas">${qs.map(a).join('')}</ol></section>
       </div>
     </div></main>`;

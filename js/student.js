@@ -11,7 +11,7 @@
 import { LANGS, loadLang, detectLang, htmlLang, t, th, esc } from './i18n.js';
 import { WORDS, WORD_BY_ID } from './words.js';
 import { GROUP_BY_ID, DEMOS } from './groups.js';
-import { RANGES, isRange, wordsIn, groupsIn, makeQuiz, makeSort } from './quiz.js';
+import { RANGES, isRange, wordsIn, groupsIn, makeQuiz, makeSort, scenesIn } from './quiz.js';
 import { loadSettings, saveSettings, loadProgress, saveProgress, recordAnswer, dueWords } from './store.js';
 import { I, applySettings, langSelect, langOptions, modal, closeModal } from './ui.js';
 import { termHTML, enName, rangeLabel as rangeLabelOf, speakBtn as speakBtnOf, speak } from './common.js';
@@ -224,9 +224,9 @@ function cardsHTML() {
 }
 
 /* ---------- quiz and review ---------- */
-function startQuiz(review) {
+function startQuiz(review, mode = 'mix') {
   const ids = review ? dueWords(S.progress) : words().map(w => w.id);
-  S.quiz = { review, list: makeQuiz(ids, 10), i: 0, score: 0, ans: null, missed: [], state: 'q' };
+  S.quiz = { review, mode, list: makeQuiz(ids, 10, review ? 'mix' : mode), i: 0, score: 0, ans: null, missed: [], state: 'q' };
 }
 function quizHTML() {
   const review = S.route.view === 'review';
@@ -240,10 +240,14 @@ function quizHTML() {
       <div class="row-btns"><a class="btn btn-primary" href="#/quiz">${I.quiz}${H('home.startQuiz')}</a><a class="btn btn-ghost" href="#/">${H('nav.home')}</a></div></section></main>`;
   }
   if (!Q || Q.review !== review || Q.state === 'start') {
-    const n = Math.min(10, words().length);
-    return `<main class="wrap narrow">${pageHead('quiz.title')}<section class="card panel">
-      <p>${bi('quiz.sub', { n }, 'span')}</p><p class="muted small">${H('quiz.keys')}</p>
-      <div class="row-btns left"><button class="btn btn-primary" data-act="quizStart">${H('btn.start')}${I.next}</button></div></section></main>`;
+    const ids = words().map(w => w.id), n = Math.min(10, ids.length), ns = scenesIn(ids).length;
+    return `<main class="wrap narrow">${pageHead('quiz.title')}
+      <p class="muted">${bi('quiz.sub', { n }, 'span')}</p>
+      <div class="qmodes">
+        <button class="card qmode" data-act="quizStart" data-mode="mix"><b>${I.shuffle}${H('quiz.mix')}</b><span class="muted">${bi('quiz.mixSub')}</span></button>
+        <button class="card qmode" data-act="quizStart" data-mode="scene" ${ns ? '' : 'disabled'}><b>${I.scene}${H('quiz.sceneOnly')}</b><span class="muted">${bi('quiz.sceneSub', { n: ns })}</span></button>
+      </div>
+      <p class="muted small">${H('quiz.keys')}</p></main>`;
   }
   if (Q.state === 'done') {
     const n = Q.list.length, pct = Q.score / n;
@@ -253,23 +257,25 @@ function quizHTML() {
       <p class="big-score">${Q.score} / ${n}</p>
       ${Q.missed.length ? `<div class="missed"><h2>${H('quiz.missed')}</h2><p class="muted small">${H('quiz.toReview')}</p>
         <ul>${Q.missed.map(id => { const w = WORD_BY_ID[id]; return `<li>${termHTML(w)}<div>${bi(`w.${id}.desc`)}</div></li>`; }).join('')}</ul></div>` : ''}
-      <div class="row-btns"><button class="btn btn-primary" data-act="quizStart">${I.reset}${H('btn.again')}</button><a class="btn btn-ghost" href="#/">${H('nav.home')}</a></div></section></main>`;
+      <div class="row-btns"><button class="btn btn-primary" data-act="quizStart" data-mode="${Q.mode || 'mix'}">${I.reset}${H('btn.again')}</button><a class="btn btn-ghost" href="#/">${H('nav.home')}</a></div></section></main>`;
   }
   const q = Q.list[Q.i], w = WORD_BY_ID[q.id], a = Q.ans;
-  const box = q.type === 'd2t'
+  const box = q.type === 's2t'
+    ? `<div class="qbox scene">${I.scene}<p class="desc">${bi('s.' + q.scene)}</p></div>`
+    : q.type === 'd2t'
     ? `<div class="qbox"><p class="desc">${bi(`w.${w.id}.desc`)}</p></div>`
     : `<div class="qbox center"><div class="big-term">${termHTML(w)}</div></div>`;
   const opt = (id, i) => {
     const o = WORD_BY_ID[id];
     const cls = a ? (id === w.id ? 'ok' : id === a ? 'ng' : '') : '';
-    const body = q.type === 'd2t' ? `<span>${termHTML(o)}${enName(o)}</span>` : `<span>${bi(`w.${id}.desc`)}</span>`;
+    const body = q.type === 't2d' ? `<span>${bi(`w.${id}.desc`)}</span>` : `<span>${termHTML(o)}${enName(o)}</span>`;
     return `<button class="opt ${cls}" data-act="answer" data-id="${id}" ${a ? 'disabled' : ''}><span class="k">${i + 1}</span>${body}</button>`;
   };
   const ok = a === w.id;
   return `<main class="wrap narrow">
     <div class="qhead"><h1 class="page-title">${H(review ? 'review.title' : 'quiz.title')}</h1><span class="count">${Q.i + 1} / ${Q.list.length}</span></div>
     <div class="bar"><i style="width:${(Q.i + (a ? 1 : 0)) / Q.list.length * 100}%"></i></div>
-    <p class="prompt">${H(q.type === 'd2t' ? 'quiz.d2t' : 'quiz.t2d')} ${groupTag(GROUP_BY_ID[w.group])}</p>
+    <p class="prompt">${H('quiz.' + q.type)} ${q.type === 's2t' ? '' : groupTag(GROUP_BY_ID[w.group])}</p>
     ${box}
     <div class="opts">${q.opts.map(opt).join('')}</div>
     ${a ? `<div class="fb ${ok ? 'ok' : 'ng'}" role="status">
@@ -353,7 +359,7 @@ const actions = {
     save(); S.cards.flipped = false; render();
   },
   cardsReset() { words().forEach(w => delete S.progress.known[w.id]); save(); S.cards.i = 0; render(); },
-  quizStart() { startQuiz(S.route.view === 'review'); render(); },
+  quizStart(el) { startQuiz(S.route.view === 'review', el.dataset.mode || 'mix'); render(); },
   answer(el) { answer(el.dataset.id); },
   quizNext() { const Q = S.quiz; if (Q.i < Q.list.length - 1) { Q.i++; Q.ans = null; } else Q.state = 'done'; render(); window.scrollTo(0, 0); },
   sortStart() { S.sort = { list: makeSort(words().map(w => w.id), 10), i: 0, score: 0, ans: null, state: 'q' }; render(); },

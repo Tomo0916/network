@@ -425,3 +425,14 @@ body.presenter .opt { font-size: 1.15rem; }
   .sheet + .sheet { break-before: page; }
   @page { size: A4; margin: 14mm; }
 }
+
+/* quiz: choose mixed or situations only; situation question box */
+.qmodes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; margin: 14px 0; }
+.qmode { text-align: left; padding: 18px 20px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; color: var(--ink); border: 2px solid var(--line); }
+.qmode:hover:not(:disabled) { border-color: var(--accent); }
+.qmode:disabled { opacity: .5; cursor: default; }
+.qmode b { display: flex; align-items: center; gap: 8px; font-size: 1.05rem; }
+.qmode b svg { color: var(--accent); width: 20px; height: 20px; }
+.qmode .muted { font-size: .88rem; }
+.qbox.scene { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; border-left: 6px solid var(--accent); }
+.qbox.scene > svg { width: 26px; height: 26px; color: var(--accent); margin-top: 2px; }

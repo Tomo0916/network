@@ -21,6 +21,7 @@ const imp = p => import(pathToFileURL(path.join(root, p)).href);
 const { WORDS } = await imp('js/words.js');
 const { GROUPS, LESSONS, DEMOS, LAYERS } = await imp('js/groups.js');
 const { makeQuestion, RANGES, wordsIn } = await imp('js/quiz.js');
+const { SCENES } = await imp('js/scenes.js');
 
 let errors = 0, warnings = 0;
 const err = (...a) => { errors++; console.log('  ✗', ...a); };
@@ -48,7 +49,17 @@ for (const w of WORDS) (w.related || []).forEach(r => {
 GROUPS.forEach(g => { if (!WORDS.some(w => w.group === g.id)) warn(`group "${g.id}" has no words`); });
 LESSONS.forEach(n => { if (!WORDS.some(w => w.lesson === n)) warn(`lesson ${n} has no words`); });
 DEMOS.forEach(d => { if (!fs.existsSync(path.join(root, 'js/demos', d + '.js'))) err(`demo "${d}": js/demos/${d}.js is missing`); });
-console.log(`   ${WORDS.length} words, ${GROUPS.length} groups, ${LESSONS.length} lessons`);
+const sceneIds = new Set();
+for (const sc of SCENES) {
+  if (!/^[a-z][a-z0-9]*$/.test(sc.id)) err(`scene "${sc.id}": use lowercase letters and digits only`);
+  if (sceneIds.has(sc.id)) err(`scene "${sc.id}" is used twice`);
+  sceneIds.add(sc.id);
+  if (!ids.has(sc.word)) err(`scene ${sc.id}: word "${sc.word}" is not a word id`);
+  if (!Array.isArray(sc.wrong) || sc.wrong.length !== 3 || new Set(sc.wrong).size !== 3) err(`scene ${sc.id}: needs 3 different wrong choices`);
+  (sc.wrong || []).forEach(x => { if (x === sc.word) err(`scene ${sc.id}: the answer is also a wrong choice`); else if (!ids.has(x)) err(`scene ${sc.id}: wrong choice "${x}" is not a word id`); });
+}
+WORDS.forEach(w => { if (!SCENES.some(s => s.word === w.id)) warn(`${w.id} has no situation question yet`); });
+console.log(`   ${WORDS.length} words, ${SCENES.length} situation questions, ${GROUPS.length} groups, ${LESSONS.length} lessons`);
 
 /* ---------- 2. languages ---------- */
 console.log('2. Language files');
@@ -57,7 +68,7 @@ const MUST = ['ja', 'easy', 'en'];       // the teacher writes these three
 const dicts = {};
 for (const l of LANGS) dicts[l] = (await imp(`i18n/${l}.js`)).default;
 const en = dicts.en;
-const wordKeys = WORDS.flatMap(w => [`w.${w.id}.desc`, `w.${w.id}.tip`]);
+const wordKeys = [...WORDS.flatMap(w => [`w.${w.id}.desc`, `w.${w.id}.tip`]), ...SCENES.map(s => `s.${s.id}`)];
 wordKeys.forEach(k => { if (!(k in en)) err(`en.js is missing "${k}"`); });
 const KANA = /[぀-ヿ]/, CJK = /[぀-ヿ一-鿿]/, RUBY = /\{[^{}|]+\|[^{}]+\}/g;
 const ph = s => [...new Set([...String(s).matchAll(/\{(\w+)\}/g)].map(m => m[1]))].sort().join();
@@ -94,6 +105,8 @@ for (const f of ['js/student.js', 'js/teacher.js', 'js/common.js', ...DEMOS.map(
 }
 ['home', 'words', 'cards', 'quiz', 'sort', 'review', 'demos'].forEach(v => used.add('nav.' + v));
 ['present', 'share', 'test'].forEach(v => used.add('t.' + v));
+['d2t', 't2d', 's2t'].forEach(v => used.add('quiz.' + v));
+['t.qChoice', 't.qScene', 't.qWrite'].forEach(k => used.add(k));
 GROUPS.forEach(g => used.add('g.' + g.id));
 LAYERS.forEach(l => used.add('layer.' + l));
 DEMOS.forEach(d => used.add('demo.' + d));
