@@ -11,10 +11,11 @@
 import { LANGS, loadLang, detectLang, htmlLang, t, th, esc } from './i18n.js';
 import { WORDS, WORD_BY_ID } from './words.js';
 import { GROUP_BY_ID, DEMOS } from './groups.js';
-import { RANGES, isRange, wordsIn, groupsIn, makeQuiz, makeSort, scenesIn } from './quiz.js';
+import { RANGES, isRange, wordsIn, groupsIn, makeQuiz, makeSort, poolSize } from './quiz.js';
+import { FACT_BY_ID } from './facts.js';
 import { loadSettings, saveSettings, loadProgress, saveProgress, recordAnswer, dueWords } from './store.js';
 import { I, applySettings, langSelect, langOptions, modal, closeModal } from './ui.js';
-import { termHTML, enName, rangeLabel as rangeLabelOf, speakBtn as speakBtnOf, speak } from './common.js';
+import { termHTML, enName, rangeLabel as rangeLabelOf, speakBtn as speakBtnOf, speak, canSpeak, choiceHTML } from './common.js';
 
 const S = {
   settings: loadSettings(null),
@@ -81,6 +82,7 @@ function render() {
   document.title = (v === 'home' ? '' : T('nav.' + v) + ' · ') + T('app.name');
   app.innerHTML = headerHTML() + body + footerHTML();
   if (v === 'demos') mountDemo(S.route.id);
+  if (v === 'quiz' || v === 'review') afterQuizRender();
   if (v === 'words') { const s = document.getElementById('search'); if (s && S.query) { s.focus(); s.setSelectionRange(S.query.length, S.query.length); } }
 }
 function headerHTML() {
@@ -223,11 +225,35 @@ function cardsHTML() {
     </div></main>`;
 }
 
-/* ---------- quiz and review ---------- */
+/* ---------- quiz and review ----------
+ * modes: mix · scene · fact · listen (see js/quiz.js). Words the student often gets wrong come first. */
+const QUIZ_MODES = [['mix', 'shuffle'], ['scene', 'scene'], ['fact', 'hash'], ['listen', 'sound']];
+function wordWeight(id) {
+  const st = S.progress.stats[id], r = S.progress.review[id];
+  return (r ? 0.5 : 0) + (st && st.ok + st.ng ? st.ng / (st.ok + st.ng) * 0.5 : 0);
+}
+const quizOpts = () => ({ listen: canSpeak, weight: wordWeight });
 function startQuiz(review, mode = 'mix') {
   const ids = review ? dueWords(S.progress) : words().map(w => w.id);
-  S.quiz = { review, mode, list: makeQuiz(ids, 10, review ? 'mix' : mode), i: 0, score: 0, ans: null, missed: [], state: 'q' };
+  const n = review ? 10 : Number(S.settings.quizN || 10);
+  S.quiz = { review, mode, list: makeQuiz(ids, n, review ? 'mix' : mode, quizOpts()), i: 0, score: 0, ans: null, missed: [], state: 'q' };
+  S.quiz.spoken = -1;
 }
+function quizStartHTML() {
+  const ids = words().map(w => w.id);
+  const N = Number(S.settings.quizN || 10);
+  const card = ([mode, icon]) => {
+    const size = poolSize(ids, mode, quizOpts());
+    return `<button class="card qmode" data-act="quizStart" data-mode="${mode}" ${size ? '' : 'disabled'}>
+      <b>${I[icon]}${H('quiz.m.' + mode)}<span class="qcount">${size}</span></b><span class="muted">${bi('quiz.m.' + mode + 'Sub')}</span></button>`;
+  };
+  const radio = v => `<label class="seg-i"><input type="radio" name="quizN" data-act="quizN" value="${v}" ${N === v ? 'checked' : ''}><span>${v}</span></label>`;
+  return `<main class="wrap narrow">${pageHead('quiz.title')}
+    <div class="qcount-row"><span>${H('quiz.count')}</span><div class="seg small-seg">${[10, 20, 40].map(radio).join('')}</div></div>
+    <div class="qmodes">${QUIZ_MODES.map(card).join('')}</div>
+    <p class="muted small">${H('quiz.keys')}</p></main>`;
+}
+const plainTerm = w => `<span class="term" lang="ja">${esc(w.term)}</span>`;
 function quizHTML() {
   const review = S.route.view === 'review';
   if (review && !S.quiz) startQuiz(true);
@@ -239,59 +265,70 @@ function quizHTML() {
       ${waiting ? `<p class="muted">${H('review.waiting', { n: waiting })}</p>` : ''}
       <div class="row-btns"><a class="btn btn-primary" href="#/quiz">${I.quiz}${H('home.startQuiz')}</a><a class="btn btn-ghost" href="#/">${H('nav.home')}</a></div></section></main>`;
   }
-  if (!Q || Q.review !== review || Q.state === 'start') {
-    const ids = words().map(w => w.id), n = Math.min(10, ids.length), ns = scenesIn(ids).length;
-    return `<main class="wrap narrow">${pageHead('quiz.title')}
-      <p class="muted">${bi('quiz.sub', { n }, 'span')}</p>
-      <div class="qmodes">
-        <button class="card qmode" data-act="quizStart" data-mode="mix"><b>${I.shuffle}${H('quiz.mix')}</b><span class="muted">${bi('quiz.mixSub')}</span></button>
-        <button class="card qmode" data-act="quizStart" data-mode="scene" ${ns ? '' : 'disabled'}><b>${I.scene}${H('quiz.sceneOnly')}</b><span class="muted">${bi('quiz.sceneSub', { n: ns })}</span></button>
-      </div>
-      <p class="muted small">${H('quiz.keys')}</p></main>`;
-  }
+  if (!Q || Q.review !== review || Q.state === 'start') return quizStartHTML();
   if (Q.state === 'done') {
-    const n = Q.list.length, pct = Q.score / n;
+    const n = Q.list.length, pct = Q.score / n, missed = [...new Set(Q.missed)];
     return `<main class="wrap narrow"><section class="card empty">
       <div class="empty-icon">${pct === 1 ? I.fire : I.check}</div>
       <h1>${H(review ? 'review.finished' : pct === 1 ? 'quiz.perfect' : pct >= .7 ? 'quiz.good' : 'quiz.tryAgain')}</h1>
       <p class="big-score">${Q.score} / ${n}</p>
-      ${Q.missed.length ? `<div class="missed"><h2>${H('quiz.missed')}</h2><p class="muted small">${H('quiz.toReview')}</p>
-        <ul>${Q.missed.map(id => { const w = WORD_BY_ID[id]; return `<li>${termHTML(w)}<div>${bi(`w.${id}.desc`)}</div></li>`; }).join('')}</ul></div>` : ''}
-      <div class="row-btns"><button class="btn btn-primary" data-act="quizStart" data-mode="${Q.mode || 'mix'}">${I.reset}${H('btn.again')}</button><a class="btn btn-ghost" href="#/">${H('nav.home')}</a></div></section></main>`;
+      ${missed.length ? `<div class="missed"><h2>${H('quiz.missed')}</h2><p class="muted small">${H('quiz.toReview')}</p>
+        <ul>${missed.map(id => { const w = WORD_BY_ID[id]; return `<li><div class="term-row">${termHTML(w)}${speakBtn(w)}</div><div>${bi(`w.${id}.desc`)}</div></li>`; }).join('')}</ul></div>` : ''}
+      <div class="row-btns"><button class="btn btn-primary" data-act="quizStart" data-mode="${Q.mode || 'mix'}">${I.reset}${H('btn.again')}</button><button class="btn btn-ghost" data-act="quizMenu">${H('quiz.other')}</button></div></section></main>`;
   }
-  const q = Q.list[Q.i], w = WORD_BY_ID[q.id], a = Q.ans;
-  const box = q.type === 's2t'
-    ? `<div class="qbox scene">${I.scene}<p class="desc">${bi('s.' + q.scene)}</p></div>`
-    : q.type === 'd2t'
-    ? `<div class="qbox"><p class="desc">${bi(`w.${w.id}.desc`)}</p></div>`
-    : `<div class="qbox center"><div class="big-term">${termHTML(w)}</div></div>`;
-  const opt = (id, i) => {
-    const o = WORD_BY_ID[id];
-    const cls = a ? (id === w.id ? 'ok' : id === a ? 'ng' : '') : '';
-    const body = q.type === 't2d' ? `<span>${bi(`w.${id}.desc`)}</span>` : `<span>${termHTML(o)}${enName(o)}</span>`;
-    return `<button class="opt ${cls}" data-act="answer" data-id="${id}" ${a ? 'disabled' : ''}><span class="k">${i + 1}</span>${body}</button>`;
+  const q = Q.list[Q.i], w = WORD_BY_ID[q.id], a = Q.ans, f = q.fact && FACT_BY_ID[q.fact];
+  const box = {
+    s2t: () => `<div class="qbox scene">${I.scene}<p class="desc">${bi('s.' + q.scene)}</p></div>`,
+    fact: () => `<div class="qbox scene">${I.hash}<p class="desc">${bi('f.' + q.fact)}</p></div>`,
+    d2t: () => `<div class="qbox"><p class="desc">${bi(`w.${w.id}.desc`)}</p></div>`,
+    tip2t: () => `<div class="qbox scene">${I.bulb}<p class="desc">${bi(`w.${w.id}.tip`)}</p></div>`,
+    e2t: () => `<div class="qbox center"><div class="big-en" lang="en">${esc(w.en)}</div></div>`,
+    listen: () => `<div class="qbox center"><button class="listen-big" data-act="speak" data-id="${w.id}" aria-label="${esc(T('btn.listen'))}">${I.sound}</button><p class="muted small">${H('quiz.tapListen')}</p></div>`,
+    t2d: () => `<div class="qbox center"><div class="big-term">${termHTML(w)}</div></div>`
+  }[q.type]();
+  const optBody = v => {
+    if (q.type === 'fact') return `<span class="fact-opt">${choiceHTML(f.opts[+v], T)}</span>`;
+    const o = WORD_BY_ID[v];
+    if (q.type === 't2d') return `<span>${bi(`w.${v}.desc`)}</span>`;
+    if (q.type === 'listen' && !a) return `<span>${plainTerm(o)}</span>`;
+    if (q.type === 'e2t') return `<span>${termHTML(o)}</span>`;
+    return `<span>${termHTML(o)}${enName(o)}</span>`;
   };
-  const ok = a === w.id;
+  const opt = (v, i) => {
+    const cls = a ? (v === q.answer ? 'ok' : v === a ? 'ng' : '') : '';
+    return `<button class="opt ${cls}" data-act="answer" data-id="${v}" ${a ? 'disabled' : ''}><span class="k">${i + 1}</span>${optBody(v)}</button>`;
+  };
+  const ok = a === q.answer;
+  const right = q.type === 'fact' ? choiceHTML(f.opts[0], T) : esc(w.term);
   return `<main class="wrap narrow">
     <div class="qhead"><h1 class="page-title">${H(review ? 'review.title' : 'quiz.title')}</h1><span class="count">${Q.i + 1} / ${Q.list.length}</span></div>
     <div class="bar"><i style="width:${(Q.i + (a ? 1 : 0)) / Q.list.length * 100}%"></i></div>
-    <p class="prompt">${H('quiz.' + q.type)} ${q.type === 's2t' ? '' : groupTag(GROUP_BY_ID[w.group])}</p>
+    <p class="prompt">${H('quiz.' + q.type)} ${q.type === 's2t' || q.type === 'fact' ? '' : groupTag(GROUP_BY_ID[w.group])}</p>
     ${box}
     <div class="opts">${q.opts.map(opt).join('')}</div>
     ${a ? `<div class="fb ${ok ? 'ok' : 'ng'}" role="status">
-      <p class="verdict">${ok ? I.check + H('quiz.ok') : I.x + H('quiz.ng') + ' ' + th('quiz.answerIs', L(), { t: esc(w.term) })} ${speakBtn(w)}</p>
-      ${q.type === 't2d' ? '' : `<p>${bi(`w.${w.id}.desc`)}</p>`}
-      <p class="tip"><b>${H('words.tip')}</b>${bi(`w.${w.id}.tip`)}</p>
+      <p class="verdict">${ok ? I.check + H('quiz.ok') : I.x + H('quiz.ng') + ' ' + th('quiz.answerIs', L(), { t: right })}</p>
+      <div class="fb-term">${termHTML(w)}${enName(w)}${speakBtn(w)}</div>
+      ${q.type === 't2d' || q.type === 'd2t' && ok ? '' : `<p>${bi(`w.${w.id}.desc`)}</p>`}
+      ${q.type === 'tip2t' ? '' : `<p class="tip"><b>${H('words.tip')}</b>${bi(`w.${w.id}.tip`)}</p>`}
+      ${w.demo ? `<a class="linkbtn" href="#/demos/${w.demo}">${I.play} ${H('words.seeDemo')}</a>` : ''}
       <button class="btn btn-primary" data-act="quizNext" id="next-btn">${H(Q.i < Q.list.length - 1 ? 'btn.next' : 'btn.results')}${I.next}</button></div>` : ''}
   </main>`;
+}
+/* a listening question speaks once when it appears */
+function afterQuizRender() {
+  const Q = S.quiz;
+  if (!Q || Q.state !== 'q' || !Q.list.length) return;
+  const q = Q.list[Q.i];
+  if (q.type === 'listen' && !Q.ans && Q.spoken !== Q.i) { Q.spoken = Q.i; setTimeout(() => speak(WORD_BY_ID[q.id]), 250); }
 }
 function answer(id) {
   const Q = S.quiz;
   if (!Q || Q.ans) return;
-  const w = Q.list[Q.i].id, ok = id === w;
+  const q = Q.list[Q.i], ok = id === q.answer;
   Q.ans = id;
-  if (ok) Q.score++; else Q.missed.push(w);
-  recordAnswer(S.progress, w, ok, Q.review); save();
+  if (ok) Q.score++; else Q.missed.push(q.id);
+  recordAnswer(S.progress, q.id, ok, Q.review); save();
   render();
   const nb = document.getElementById('next-btn'); if (nb) nb.focus({ preventScroll: true });
 }
@@ -329,11 +366,13 @@ function sortHTML() {
 function demosHTML() {
   const id = S.route.id;
   return `<main class="wrap"><div class="page-head"><div><h1 class="page-title">${H('demos.title')}</h1><p class="muted">${bi('demos.sub')}</p></div></div>
-    <nav class="demo-tabs">${DEMOS.map(d => `<a href="#/demos/${d}" class="${d === id ? 'on' : ''}">${H('demo.' + d)}</a>`).join('')}</nav>
+    <div class="demo-bar"><nav class="demo-tabs">${DEMOS.map(d => `<a href="#/demos/${d}" class="${d === id ? 'on' : ''}">${H('demo.' + d)}</a>`).join('')}</nav>
+      <div class="speedbar"><span>${H('dm.speed')}</span><div class="seg small-seg">${['0.5', '1', '2'].map(v => `<label class="seg-i"><input type="radio" name="dspeed" data-act="demoSpeed" value="${v}" ${String(S.settings.demoSpeed || 1) === v ? 'checked' : ''}><span>×${v}</span></label>`).join('')}</div></div></div>
     <div id="demo-root"><div class="loading"><div class="spinner"></div></div></div></main>`;
 }
 async function mountDemo(id) {
-  const mod = (await import(`./demos/${id}.js`)).default;
+  const [mod, kit] = await Promise.all([import(`./demos/${id}.js`).then(m => m.default), import('./demos/kit.js')]);
+  kit.setSpeed(S.settings.demoSpeed || 1);
   const el = document.getElementById('demo-root');
   if (!el || S.route.id !== id) return;
   mod.mount(el, {
@@ -360,6 +399,7 @@ const actions = {
   },
   cardsReset() { words().forEach(w => delete S.progress.known[w.id]); save(); S.cards.i = 0; render(); },
   quizStart(el) { startQuiz(S.route.view === 'review', el.dataset.mode || 'mix'); render(); },
+  quizMenu() { S.quiz = null; render(); },
   answer(el) { answer(el.dataset.id); },
   quizNext() { const Q = S.quiz; if (Q.i < Q.list.length - 1) { Q.i++; Q.ans = null; } else Q.state = 'done'; render(); window.scrollTo(0, 0); },
   sortStart() { S.sort = { list: makeSort(words().map(w => w.id), 10), i: 0, score: 0, ans: null, state: 'q' }; render(); },
@@ -392,6 +432,8 @@ document.addEventListener('change', e => {
     if (location.search) history.replaceState(null, '', location.pathname + location.hash);
     render(); return;
   }
+  if (el.matches('[data-act="demoSpeed"]')) { S.settings.demoSpeed = Number(el.value); saveSettings(S.settings); import('./demos/kit.js').then(k => k.setSpeed(S.settings.demoSpeed)); return; }
+  if (el.matches('[data-act="quizN"]')) { S.settings.quizN = Number(el.value); saveSettings(S.settings); render(); return; }
   if (el.matches('[data-act="cfilter"]')) { S.cards.onlyNew = el.value === 'new'; S.cards.i = 0; S.cards.flipped = false; render(); return; }
   if (el.dataset.setting) {
     const k = el.dataset.setting;

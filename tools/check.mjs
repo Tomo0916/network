@@ -22,6 +22,8 @@ const { WORDS } = await imp('js/words.js');
 const { GROUPS, LESSONS, DEMOS, LAYERS } = await imp('js/groups.js');
 const { makeQuestion, RANGES, wordsIn } = await imp('js/quiz.js');
 const { SCENES } = await imp('js/scenes.js');
+const { FACTS, factKeys } = await imp('js/facts.js');
+const { makeQuiz, poolSize } = await imp('js/quiz.js');
 
 let errors = 0, warnings = 0;
 const err = (...a) => { errors++; console.log('  ✗', ...a); };
@@ -59,7 +61,18 @@ for (const sc of SCENES) {
   (sc.wrong || []).forEach(x => { if (x === sc.word) err(`scene ${sc.id}: the answer is also a wrong choice`); else if (!ids.has(x)) err(`scene ${sc.id}: wrong choice "${x}" is not a word id`); });
 }
 WORDS.forEach(w => { if (!SCENES.some(s => s.word === w.id)) warn(`${w.id} has no situation question yet`); });
-console.log(`   ${WORDS.length} words, ${SCENES.length} situation questions, ${GROUPS.length} groups, ${LESSONS.length} lessons`);
+const factIds = new Set();
+for (const f of FACTS) {
+  if (!/^[a-z][a-z0-9]*$/.test(f.id)) err(`fact "${f.id}": use lowercase letters and digits only`);
+  if (factIds.has(f.id)) err(`fact "${f.id}" is used twice`);
+  factIds.add(f.id);
+  if (!ids.has(f.word)) err(`fact ${f.id}: word "${f.word}" is not a word id`);
+  if (!Array.isArray(f.opts) || f.opts.length !== 4) err(`fact ${f.id}: needs 4 choices`);
+  const seen = new Set((f.opts || []).map(o => JSON.stringify(o)));
+  if (seen.size !== (f.opts || []).length) err(`fact ${f.id}: two choices are the same`);
+  (f.opts || []).forEach(o => { if (o && o.seq) o.seq.forEach(t => { if (t.startsWith('w:') && !ids.has(t.slice(2))) err(`fact ${f.id}: "${t}" is not a word id`); }); });
+}
+console.log(`   ${WORDS.length} words, ${SCENES.length} situation questions, ${FACTS.length} number/order questions, ${GROUPS.length} groups, ${LESSONS.length} lessons`);
 
 /* ---------- 2. languages ---------- */
 console.log('2. Language files');
@@ -68,7 +81,7 @@ const MUST = ['ja', 'easy', 'en'];       // the teacher writes these three
 const dicts = {};
 for (const l of LANGS) dicts[l] = (await imp(`i18n/${l}.js`)).default;
 const en = dicts.en;
-const wordKeys = [...WORDS.flatMap(w => [`w.${w.id}.desc`, `w.${w.id}.tip`]), ...SCENES.map(s => `s.${s.id}`)];
+const wordKeys = [...WORDS.flatMap(w => [`w.${w.id}.desc`, `w.${w.id}.tip`]), ...SCENES.map(s => `s.${s.id}`), ...FACTS.map(f => `f.${f.id}`), ...factKeys()];
 wordKeys.forEach(k => { if (!(k in en)) err(`en.js is missing "${k}"`); });
 const KANA = /[぀-ヿ]/, CJK = /[぀-ヿ一-鿿]/, RUBY = /\{[^{}|]+\|[^{}]+\}/g;
 const ph = s => [...new Set([...String(s).matchAll(/\{(\w+)\}/g)].map(m => m[1]))].sort().join();
@@ -105,7 +118,9 @@ for (const f of ['js/student.js', 'js/teacher.js', 'js/common.js', ...DEMOS.map(
 }
 ['home', 'words', 'cards', 'quiz', 'sort', 'review', 'demos'].forEach(v => used.add('nav.' + v));
 ['present', 'share', 'test'].forEach(v => used.add('t.' + v));
-['d2t', 't2d', 's2t'].forEach(v => used.add('quiz.' + v));
+['d2t', 't2d', 's2t', 'e2t', 'tip2t', 'listen', 'fact'].forEach(v => used.add('quiz.' + v));
+['mix', 'scene', 'fact', 'listen'].forEach(m => { used.add('quiz.m.' + m); used.add('quiz.m.' + m + 'Sub'); });
+['t.qFact', 't.fFact'].forEach(k => used.add(k));
 ['t.qChoice', 't.qScene', 't.qWrite'].forEach(k => used.add(k));
 GROUPS.forEach(g => used.add('g.' + g.id));
 LAYERS.forEach(l => used.add('layer.' + l));
@@ -122,6 +137,14 @@ for (const w of WORDS) for (let i = 0; i < 20; i++) {
   if (q.opts.length !== Math.min(4, WORDS.length) || new Set(q.opts).size !== q.opts.length || !q.opts.includes(w.id)) { err(`${w.id}: bad choices ${q.opts}`); break; }
 }
 RANGES.forEach(r => { if (!wordsIn(r).length) warn(`range "${r}" has no words`); });
+const all = WORDS.map(w => w.id);
+for (const mode of ['mix', 'scene', 'fact', 'listen']) for (let i = 0; i < 10; i++) {
+  const qs = makeQuiz(all, 40, mode);
+  if (qs.length !== Math.min(40, poolSize(all, mode))) { err(`quiz ${mode}: made ${qs.length} questions`); break; }
+  const bad = qs.find(q => q.opts.length !== 4 || new Set(q.opts).size !== 4 || !q.opts.includes(q.answer));
+  if (bad) { err(`quiz ${mode}: bad question ${JSON.stringify(bad)}`); break; }
+}
+console.log(`   questions in all words: mix ${poolSize(all, 'mix')}, situations ${poolSize(all, 'scene')}, numbers/order ${poolSize(all, 'fact')}, listening ${poolSize(all, 'listen')}`);
 
 console.log(errors ? `\n${errors} error(s), ${warnings} warning(s)` : `\nOK (${warnings} warning(s))`);
 process.exit(errors ? 1 : 0);

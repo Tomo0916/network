@@ -52,7 +52,27 @@ export const SCENES = [
   { id: 'csmacd1', word: 'csmacd', wrong: ['flooding', 'macfilter', 'framing'] },
   { id: 'csmacd2', word: 'csmacd', wrong: ['flooding', 'macfilter', 'protocol'] },
   { id: 'macfilter1', word: 'macfilter', wrong: ['csmacd', 'flooding', 'multicast'] },
-  { id: 'macfilter2', word: 'macfilter', wrong: ['csmacd', 'flooding', 'switch'] }
+  { id: 'macfilter2', word: 'macfilter', wrong: ['csmacd', 'flooding', 'switch'] },
+  { id: 'interface3', word: 'interface', wrong: ['nic', 'dce', 'mac'] },
+  { id: 'nic3', word: 'nic', wrong: ['dce', 'repeater', 'switch'] },
+  { id: 'dce3', word: 'dce', wrong: ['nic', 'hub', 'interface'] },
+  { id: 'bps3', word: 'bps', wrong: ['mac', 'protocol', 'preamble'] },
+  { id: 'attenuation3', word: 'attenuation', wrong: ['noise', 'collision', 'flooding'] },
+  { id: 'noise3', word: 'noise', wrong: ['attenuation', 'collision', 'broadcast'] },
+  { id: 'collision3', word: 'collision', wrong: ['noise', 'attenuation', 'multicast'] },
+  { id: 'hub3', word: 'hub', wrong: ['switch', 'repeater', 'dce'] },
+  { id: 'repeater3', word: 'repeater', wrong: ['switch', 'nic', 'dce'] },
+  { id: 'flooding3', word: 'flooding', wrong: ['broadcast', 'collision', 'multicast'] },
+  { id: 'protocol3', word: 'protocol', wrong: ['interface', 'bps', 'dce'] },
+  { id: 'ethernet3', word: 'ethernet', wrong: ['csmacd', 'macfilter', 'dce'] },
+  { id: 'framing3', word: 'framing', wrong: ['preamble', 'flooding', 'collision'] },
+  { id: 'preamble3', word: 'preamble', wrong: ['mac', 'framing', 'bps'] },
+  { id: 'unicast3', word: 'unicast', wrong: ['broadcast', 'multicast', 'flooding'] },
+  { id: 'broadcast3', word: 'broadcast', wrong: ['unicast', 'multicast', 'macfilter'] },
+  { id: 'multicast3', word: 'multicast', wrong: ['unicast', 'broadcast', 'flooding'] },
+  { id: 'mac3', word: 'mac', wrong: ['bps', 'preamble', 'protocol'] },
+  { id: 'csmacd3', word: 'csmacd', wrong: ['flooding', 'macfilter', 'framing'] },
+  { id: 'macfilter3', word: 'macfilter', wrong: ['csmacd', 'flooding', 'switch'] }
 ];
 export const SCENE_BY_ID = Object.fromEntries(SCENES.map(s => [s.id, s]));
 export const scenesOf = wordId => SCENES.filter(s => s.word === wordId);

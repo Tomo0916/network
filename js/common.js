@@ -34,3 +34,11 @@ export function speak(w) {
     speechSynthesis.speak(u);
   } catch (e) { /* no speech on this device */ }
 }
+
+/* a choice of a number/order question (js/facts.js) as HTML; tr(key, vars) gives the text in the wanted language */
+import { WORD_BY_ID } from './words.js';
+export function choiceHTML(o, tr) {
+  if (typeof o === 'string') return `<span class="mono">${esc(o)}</span>`;
+  if (o.k) return esc(tr(o.k, o.v));
+  return o.seq.map(t => t.startsWith('w:') ? `<span lang="ja">${esc(WORD_BY_ID[t.slice(2)].term)}</span>` : esc(tr(t))).join(' <span class="arrow">→</span> ');
+}
