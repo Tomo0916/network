@@ -236,6 +236,7 @@ export default {
   "quiz.listen": "Dengarkan, lalu pilih istilah yang kamu dengar.",
   "quiz.fact": "Mana yang benar?",
   "quiz.tapListen": "Tekan tombol untuk mendengar lagi.",
+  "quiz.autoNext": "Lanjut otomatis",
   "quiz.count": "Jumlah soal",
   "quiz.other": "Kuis lain",
   "quiz.m.mix": "Campuran",

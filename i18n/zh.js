@@ -236,6 +236,7 @@ export default {
   "quiz.listen": "听朗读，选择你听到的术语。",
   "quiz.fact": "哪一个是正确的？",
   "quiz.tapListen": "点击按钮可以再听一次。",
+  "quiz.autoNext": "自动下一题",
   "quiz.count": "题数",
   "quiz.other": "其他测验",
   "quiz.m.mix": "混合",

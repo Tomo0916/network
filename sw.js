@@ -1,7 +1,7 @@
 /* Offline support (same rules as SQL Practice next/sw.js).
  * App files: network first, so an update shows at once; icons and fonts: cache first.
  * Bump VERSION when publishing big changes. */
-const VERSION = 'netw-5';
+const VERSION = 'netw-6';
 const CORE = ['./', 'index.html', 'css/app.css', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png',
   'js/student.js', 'js/scenes.js', 'js/facts.js', 'js/common.js', 'vendor/qrcode.js', 'js/i18n.js', 'js/ui.js', 'js/store.js', 'js/quiz.js', 'js/words.js', 'js/groups.js',
   'js/demos/kit.js', 'js/demos/hubswitch.js', 'js/demos/cast.js', 'js/demos/csmacd.js', 'js/demos/repeater.js', 'js/demos/frame.js', 'js/teacher.js', 'teacher.html',

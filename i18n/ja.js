@@ -235,6 +235,7 @@ export default {
   "quiz.listen": "読み上げを聞いて、合う用語を選ぼう。",
   "quiz.fact": "正しいものはどれ？",
   "quiz.tapListen": "ボタンを押すと、もう一度聞けます。",
+  "quiz.autoNext": "自動で次へ",
   "quiz.count": "問題数",
   "quiz.other": "ほかのクイズ",
   "quiz.m.mix": "ミックス",

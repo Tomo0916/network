@@ -236,6 +236,7 @@ export default {
   "quiz.listen": "සවන් දී, ඇසුණු පදය තෝරන්න.",
   "quiz.fact": "නිවැරදි කුමක්ද?",
   "quiz.tapListen": "නැවත ඇසීමට බොත්තම ඔබන්න.",
+  "quiz.autoNext": "ස්වයංක්‍රීයව ඊළඟට",
   "quiz.count": "ප්‍රශ්න ගණන",
   "quiz.other": "වෙනත් ප්‍රශ්නාවලි",
   "quiz.m.mix": "මිශ්‍ර",

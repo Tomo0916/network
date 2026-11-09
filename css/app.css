@@ -521,3 +521,21 @@ svg.listening .bus { stroke-dasharray: 10 8; animation: march 1s linear infinite
 .fb .linkbtn { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 700; text-decoration: none; }
 .tq-opts.long { flex-direction: column; gap: 1mm; }
 @media (max-width: 640px) { .bitcells b { width: 20px; height: 22px; font-size: .8rem; } .qmodes { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } .qmode { padding: 12px 14px; min-width: 0; overflow-wrap: anywhere; } .qmode b { flex-wrap: wrap; } }
+
+/* ---------- quiz: auto-next switch ---------- */
+.qhead { align-items: center; flex-wrap: wrap; }
+.qhead-r { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.qcount-row { flex-wrap: wrap; }
+.qcount-row .autonext { margin-left: auto; }
+.autonext { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink-2); font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer; }
+.autonext:hover { border-color: var(--accent); }
+.autonext .sw { position: relative; width: 34px; height: 20px; border-radius: 999px; background: var(--line); transition: background .2s; flex: none; }
+.autonext .sw i { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .2s; }
+.autonext.on { color: var(--accent); border-color: var(--accent); }
+.autonext.on .sw { background: var(--accent); }
+.autonext.on .sw i { transform: translateX(14px); }
+/* the Next button fills up while it waits */
+#next-btn.auto-go { position: relative; overflow: hidden; }
+#next-btn.auto-go::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: rgba(255,255,255,.75); transform-origin: left; animation: autofill var(--auto, 2s) linear forwards; }
+@keyframes autofill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { #next-btn.auto-go::after { animation-duration: var(--auto, 2s); } }

@@ -236,6 +236,7 @@ export default {
   "quiz.listen": "Nghe và chọn thuật ngữ bạn nghe được.",
   "quiz.fact": "Câu nào đúng?",
   "quiz.tapListen": "Nhấn nút để nghe lại.",
+  "quiz.autoNext": "Tự động chuyển câu",
   "quiz.count": "Số câu",
   "quiz.other": "Câu đố khác",
   "quiz.m.mix": "Trộn lẫn",

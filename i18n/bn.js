@@ -236,6 +236,7 @@ export default {
   "quiz.listen": "শুনে, যে শব্দটি শুনলেন সেটি বেছে নিন।",
   "quiz.fact": "কোনটি সঠিক?",
   "quiz.tapListen": "আবার শুনতে বোতাম চাপুন।",
+  "quiz.autoNext": "স্বয়ংক্রিয় পরের প্রশ্ন",
   "quiz.count": "প্রশ্নের সংখ্যা",
   "quiz.other": "অন্য কুইজ",
   "quiz.m.mix": "মিশ্র",

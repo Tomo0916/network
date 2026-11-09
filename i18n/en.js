@@ -236,6 +236,7 @@ export default {
   "quiz.listen": "Listen and choose the term you hear.",
   "quiz.fact": "Which one is correct?",
   "quiz.tapListen": "Press the button to listen again.",
+  "quiz.autoNext": "Auto next",
   "quiz.count": "Questions",
   "quiz.other": "Other quizzes",
   "quiz.m.mix": "Mixed",

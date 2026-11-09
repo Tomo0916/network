@@ -70,6 +70,7 @@ function parseRoute() {
 }
 window.addEventListener('hashchange', () => {
   S.route = parseRoute();
+  clearAuto();
   if (S.route.view === 'review') S.quiz = null;
   render(); window.scrollTo(0, 0);
 });
@@ -249,9 +250,29 @@ function quizStartHTML() {
   };
   const radio = v => `<label class="seg-i"><input type="radio" name="quizN" data-act="quizN" value="${v}" ${N === v ? 'checked' : ''}><span>${v}</span></label>`;
   return `<main class="wrap narrow">${pageHead('quiz.title')}
-    <div class="qcount-row"><span>${H('quiz.count')}</span><div class="seg small-seg">${[10, 20, 40].map(radio).join('')}</div></div>
+    <div class="qcount-row"><span>${H('quiz.count')}</span><div class="seg small-seg">${[10, 20, 40].map(radio).join('')}</div>${autoNextBtn()}</div>
     <div class="qmodes">${QUIZ_MODES.map(card).join('')}</div>
     <p class="muted small">${H('quiz.keys')}</p></main>`;
+}
+/* auto-next: after an answer the next question comes by itself (longer wait after a wrong answer, to read the explanation) */
+const AUTO_MS = { ok: 1800, ng: 5000 };
+let autoTimer = null;
+const clearAuto = () => { clearTimeout(autoTimer); autoTimer = null; };
+function autoNextBtn() {
+  const on = !!S.settings.autoNext;
+  return `<button class="autonext ${on ? 'on' : ''}" data-act="autoNext" aria-pressed="${on}"><span class="sw" aria-hidden="true"><i></i></span>${H('quiz.autoNext')}</button>`;
+}
+function scheduleAuto() {
+  clearAuto();
+  const Q = S.quiz;
+  if (!S.settings.autoNext || !Q || Q.state !== 'q' || !Q.ans) return;
+  const ms = AUTO_MS[Q.ans === Q.list[Q.i].answer ? 'ok' : 'ng'], i = Q.i;
+  const nb = document.getElementById('next-btn');
+  if (nb) { nb.style.setProperty('--auto', ms + 'ms'); nb.classList.add('auto-go'); }
+  autoTimer = setTimeout(() => {
+    autoTimer = null;
+    if (S.quiz === Q && Q.i === i && Q.ans && ['quiz', 'review'].includes(S.route.view)) actions.quizNext();
+  }, ms);
 }
 const plainTerm = w => `<span class="term" lang="ja">${esc(w.term)}</span>`;
 function quizHTML() {
@@ -301,7 +322,7 @@ function quizHTML() {
   const ok = a === q.answer;
   const right = q.type === 'fact' ? choiceHTML(f.opts[0], T) : esc(w.term);
   return `<main class="wrap narrow">
-    <div class="qhead"><h1 class="page-title">${H(review ? 'review.title' : 'quiz.title')}</h1><span class="count">${Q.i + 1} / ${Q.list.length}</span></div>
+    <div class="qhead"><h1 class="page-title">${H(review ? 'review.title' : 'quiz.title')}</h1><div class="qhead-r">${autoNextBtn()}<span class="count">${Q.i + 1} / ${Q.list.length}</span></div></div>
     <div class="bar"><i style="width:${(Q.i + (a ? 1 : 0)) / Q.list.length * 100}%"></i></div>
     <p class="prompt">${H('quiz.' + q.type)} ${q.type === 's2t' || q.type === 'fact' ? '' : groupTag(GROUP_BY_ID[w.group])}</p>
     ${box}
@@ -331,6 +352,7 @@ function answer(id) {
   recordAnswer(S.progress, q.id, ok, Q.review); save();
   render();
   const nb = document.getElementById('next-btn'); if (nb) nb.focus({ preventScroll: true });
+  scheduleAuto();
 }
 
 /* ---------- sorting game ---------- */
@@ -399,9 +421,10 @@ const actions = {
   },
   cardsReset() { words().forEach(w => delete S.progress.known[w.id]); save(); S.cards.i = 0; render(); },
   quizStart(el) { startQuiz(S.route.view === 'review', el.dataset.mode || 'mix'); render(); },
-  quizMenu() { S.quiz = null; render(); },
+  quizMenu() { clearAuto(); S.quiz = null; render(); },
   answer(el) { answer(el.dataset.id); },
-  quizNext() { const Q = S.quiz; if (Q.i < Q.list.length - 1) { Q.i++; Q.ans = null; } else Q.state = 'done'; render(); window.scrollTo(0, 0); },
+  autoNext() { S.settings.autoNext = !S.settings.autoNext; saveSettings(S.settings); render(); scheduleAuto(); },
+  quizNext() { clearAuto(); const Q = S.quiz; if (Q.i < Q.list.length - 1) { Q.i++; Q.ans = null; } else Q.state = 'done'; render(); window.scrollTo(0, 0); },
   sortStart() { S.sort = { list: makeSort(words().map(w => w.id), 10), i: 0, score: 0, ans: null, state: 'q' }; render(); },
   sortAnswer(el) {
     const R = S.sort; if (R.ans) return;

@@ -236,6 +236,7 @@ export default {
   "quiz.listen": "सुनेर, सुनेको शब्द छान्नुहोस्।",
   "quiz.fact": "कुन सही हो?",
   "quiz.tapListen": "फेरि सुन्न बटन थिच्नुहोस्।",
+  "quiz.autoNext": "आफैं अर्को प्रश्न",
   "quiz.count": "प्रश्न संख्या",
   "quiz.other": "अरू क्विज",
   "quiz.m.mix": "मिश्रित",
