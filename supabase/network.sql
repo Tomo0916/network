@@ -290,6 +290,48 @@ grant execute on function public.net_teacher_set_pin(uuid, uuid, text) to authen
 grant execute on function public.net_start_live(uuid, integer) to authenticated;
 grant execute on function public.net_stop_live(uuid) to authenticated;
 
+-- ---------- quick test (2026-11-16) ----------
+-- quick = {"id", "range", "mode", "n", "at": start (server time, after a 10-second countdown), "end": time limit or null}
+-- quick_log = the quick tests so far, newest first (at most 30). Answers: net_attempts kind 'quick', seed = quick id.
+alter table public.net_classes add column if not exists quick jsonb check (quick is null or jsonb_typeof(quick) = 'object');
+alter table public.net_classes add column if not exists quick_log jsonb check (quick_log is null or jsonb_typeof(quick_log) = 'array');
+create or replace function public.net_start_quick(p_class uuid, p_quick jsonb, p_min integer)
+  returns public.net_classes
+  language plpgsql security definer set search_path = public as
+$$
+declare c public.net_classes; t0 timestamptz := now() + interval '10 seconds'; q jsonb;
+begin
+  if not public.net_is_teacher_of(p_class) then raise exception 'not_teacher' using errcode = '42501'; end if;
+  q := jsonb_build_object('id', substr(md5(random()::text || clock_timestamp()::text), 1, 10),
+    'range', left(coalesce(p_quick->>'range', 'all'), 30), 'mode', left(coalesce(p_quick->>'mode', 'mix'), 10),
+    'n', greatest(1, least(coalesce((p_quick->>'n')::int, 5), 40)),
+    'at', t0, 'end', case when coalesce(p_min, 0) > 0 then t0 + make_interval(mins => least(p_min, 60)) end);
+  update public.net_classes set quick = q where id = p_class returning * into c;
+  return c;
+end
+$$;
+create or replace function public.net_stop_quick(p_class uuid)
+  returns public.net_classes
+  language plpgsql security definer set search_path = public as
+$$
+declare c public.net_classes;
+begin
+  if not public.net_is_teacher_of(p_class) then raise exception 'not_teacher' using errcode = '42501'; end if;
+  update public.net_classes
+    set quick_log = case when quick is null then quick_log
+                         else (select coalesce(jsonb_agg(x), '[]'::jsonb) from (
+                                select x from jsonb_array_elements(jsonb_build_array(quick || jsonb_build_object('stopped', now())) || coalesce(quick_log, '[]'::jsonb)) with ordinality as e(x, o)
+                                order by o limit 30) s) end,
+        quick = null
+    where id = p_class returning * into c;
+  return c;
+end
+$$;
+revoke all on function public.net_start_quick(uuid, jsonb, integer) from public, anon;
+revoke all on function public.net_stop_quick(uuid) from public, anon;
+grant execute on function public.net_start_quick(uuid, jsonb, integer) to authenticated;
+grant execute on function public.net_stop_quick(uuid) to authenticated;
+
 -- keep updated_at fresh
 create or replace function public.net_touch_updated_at() returns trigger language plpgsql as
 $$ begin new.updated_at := now(); return new; end $$;

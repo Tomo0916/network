@@ -5,7 +5,7 @@
  *          #/words        word list          #/cards   flashcards
  *          #/quiz         4-choice quiz      #/sort    sorting game
  *          #/review       today's review     #/demos/<id>  animations
- *          #/class        join a class       #/task    the class assignment
+ *          #/class        join a class       #/task    the class assignment   #/quick  the quick test
  * URL options:  ?lang=vi   ?range=lesson-2   ?present=1   ?class=<class code>
  * Progress is stored by word id, so switching language never touches it.
  * ========================================================= */
@@ -72,7 +72,7 @@ function rangeSelect() {
 /* ---------- routing ---------- */
 function parseRoute() {
   const h = location.hash.replace(/^#\/?/, '').split('/');
-  if (['words', 'cards', 'quiz', 'sort', 'review', 'class', 'task'].includes(h[0])) return { view: h[0] };
+  if (['words', 'cards', 'quiz', 'sort', 'review', 'class', 'task', 'quick'].includes(h[0])) return { view: h[0] };
   if (h[0] === 'demos') return { view: 'demos', id: DEMOS.includes(h[1]) ? h[1] : DEMOS[0] };
   return { view: 'home' };
 }
@@ -87,11 +87,12 @@ window.addEventListener('hashchange', () => {
 function render() {
   applySettings(S.settings, htmlLang(L()));
   const v = S.route.view;
-  const body = { home: homeHTML, words: wordsHTML, cards: cardsHTML, quiz: quizHTML, review: quizHTML, task: quizHTML, sort: sortHTML, demos: demosHTML, class: classHTML }[v]();
-  document.title = (v === 'home' ? '' : T(v === 'task' ? 'cls.task' : v === 'class' ? 'cls.title' : 'nav.' + v) + ' · ') + T('app.name');
+  const body = { home: homeHTML, words: wordsHTML, cards: cardsHTML, quiz: quizHTML, review: quizHTML, task: quizHTML, sort: sortHTML, demos: demosHTML, class: classHTML, quick: quickHTML }[v]();
+  document.title = (v === 'home' ? '' : T(v === 'task' ? 'cls.task' : v === 'class' ? 'cls.title' : v === 'quick' ? 'cls.quick' : 'nav.' + v) + ' · ') + T('app.name');
   app.innerHTML = headerHTML() + liveBanner() + body + footerHTML();
   if (v === 'demos') mountDemo(S.route.id);
   if (v === 'quiz' || v === 'review' || v === 'task') afterQuizRender();
+  if (v === 'quick') afterQuickRender();
   if (v === 'words') { const s = document.getElementById('search'); if (s && S.query) { s.focus(); s.setSelectionRange(S.query.length, S.query.length); } }
 }
 function headerHTML() {
@@ -197,6 +198,9 @@ async function refreshClass() {
     /* the teacher has just started the class: open the assignment (once) */
     if (live && !wasLive && curTask() && !taskDone() && S.route.view !== 'task') location.hash = '#/task';
     wasLive = live;
+    /* a quick test has started: everyone goes to it */
+    if (quickOn() && !quickDone(row.quick.id) && S.route.view !== 'quick') { location.hash = '#/quick'; return; }
+    if (S.route.view === 'quick') { render(); return; }
     if (JSON.stringify(S.klass) !== before && !(S.route.view === 'task' && S.quiz && S.quiz.task && S.quiz.state === 'q' && S.quiz.task.key === taskKey(curTask()))) render();
     else if (JSON.stringify(S.klass) !== before) { const b = document.getElementById('live-banner'); if (b) b.outerHTML = liveBanner(); }
   } catch (e) { /* offline: try again later */ }
@@ -216,6 +220,8 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 setInterval(() => { if (S.cls && wasLive && !isLive()) { wasLive = false; render(); } }, 15000);   // the live time ran out
 
 function liveBanner() {
+  if (quickOn() && !quickDone(S.klass.quick.id) && S.route.view !== 'quick')
+    return `<div id="live-banner" class="live-banner"><div class="wrap">${I.flag}<span>${H('cls.quickNow')}</span><a class="btn btn-light btn-sm" href="#/quick">${H('cls.quickGo')}${I.next}</a></div></div>`;
   if (!isLive() || S.route.view === 'task' || !curTask()) return '<div id="live-banner" hidden></div>';
   return `<div id="live-banner" class="live-banner"><div class="wrap">${I.live}<span>${H('cls.liveNow')}</span><a class="btn btn-light btn-sm" href="#/task">${H('cls.backToTask')}${I.next}</a></div></div>`;
 }
@@ -226,7 +232,9 @@ function classCardHTML() {
   if (!BE.enabled) return '';
   if (!S.cls) return `<a class="card cls-card join" href="#/class">${I.users}<span><b>${H('cls.join')}</b><span class="muted">${bi('cls.joinSub')}</span></span>${I.next}</a>`;
   const t = curTask(), done = Store.get('netw.tasks', {})[taskKey(t)];
+  const qk = quickOn() && !quickDone(S.klass.quick.id);
   return `<section class="card cls-card">
+    ${qk ? `<a class="btn btn-primary quick-go" href="#/quick">${I.flag}${H('cls.quickGo')}</a>` : ''}
     <div class="cls-head">${I.users}<div><b>${esc(S.cls.name)}</b><span class="muted small">${H('cls.you', { nick: S.cls.nick })}</span></div>
       ${isLive() ? `<span class="live-tag">${I.live}${H('cls.live')}</span>` : ''}<a class="linkbtn" href="#/class">${H('cls.details')}</a></div>
     ${t ? `<div class="cls-task"><div><b>${H('cls.task')}</b><span class="muted">${taskInfo(t)}</span></div>
@@ -283,6 +291,86 @@ document.addEventListener('submit', async e => {
     render();
   } catch (err) { J.busy = false; J.err = joinError(err); render(); }
 });
+
+/* ---------- quick test: everyone at once, a countdown, a time limit, no hints until the end ---------- */
+const quickOn = () => { const q = S.klass && S.klass.quick; return !!(q && q.id && (!q.end || Date.parse(q.end) + 5000 > now())); };
+const quickDone = id => !!Store.get('netw.quicks', {})[id];
+const mmss = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+function quickState() {
+  const qt = S.qt;
+  if (!qt) return 'none';
+  if (qt.ans.length >= qt.list.length || quickDone(qt.id)) return 'done';
+  const q = S.klass && S.klass.quick;
+  if (!q || q.id !== qt.id) return 'done';                       // the teacher ended it
+  if (q.end && now() > Date.parse(q.end)) return 'done';            // time is up
+  return now() < Date.parse(q.at) ? 'wait' : 'q';
+}
+function finishQuick() {
+  const qt = S.qt;
+  if (!qt || quickDone(qt.id)) return;
+  const all = Store.get('netw.quicks', {});
+  all[qt.id] = { score: qt.ans.filter(a => a.ok).length, n: qt.list.length, at: Date.now() };
+  const keys = Object.keys(all); if (keys.length > 40) delete all[keys[0]];
+  Store.set('netw.quicks', all); Store.del('netw.qrun');
+}
+function quickHTML() {
+  if (!S.cls) return taskHTMLorStart();
+  const q = S.klass && S.klass.quick;
+  if (q && quickOn() && (!S.qt || S.qt.id !== q.id)) {
+    const run = Store.get('netw.qrun', null);
+    S.qt = { id: q.id, list: taskQuiz({ range: q.range, mode: q.mode, n: q.n, seed: q.id }, seededRandom), ans: run && run.id === q.id ? run.ans : [] };
+  }
+  const st = quickState(), qt = S.qt;
+  if (st === 'none') return `<main class="wrap narrow"><section class="card empty"><div class="empty-icon">${I.flag}</div><h1>${H('cls.quick')}</h1><p class="muted">${H('cls.noQuick')}</p><div class="row-btns"><a class="btn btn-ghost" href="#/">${H('nav.home')}</a></div></section></main>`;
+  if (st === 'wait') return `<main class="wrap narrow"><section class="card empty quick-wait"><h1>${H('cls.quick')}</h1>
+    <p class="muted">${H('cls.taskInfo', { range: rangeLabel(q.range), mode: T('quiz.m.' + q.mode), n: q.n })}${q.end ? ' · ' + H('cls.quickLimit', { t: mmss(Date.parse(q.end) - Date.parse(q.at)) }) : ''}</p>
+    <div class="countdown" id="qt-count">${Math.max(0, Math.ceil((Date.parse(q.at) - now()) / 1000))}</div><p>${H('cls.quickSoon')}</p></section></main>`;
+  if (st === 'done') {
+    finishQuick();
+    const score = qt.ans.filter(a => a.ok).length;
+    return `<main class="wrap narrow"><section class="card empty"><div class="empty-icon">${I.flag}</div><h1>${H('cls.quickEnd')}</h1>
+      <p class="big-score">${score} / ${qt.list.length}</p>
+      <ol class="qt-review">${qt.list.map((x, i) => { const a = qt.ans[i], w = WORD_BY_ID[x.id];
+        const right = x.type === 'fact' ? choiceHTML(FACT_BY_ID[x.fact].opts[0], T) : termHTML(w);
+        return `<li class="${a ? (a.ok ? 'ok' : 'ng') : 'skip'}"><span class="mk">${a ? (a.ok ? '○' : '×') : '–'}</span><div><span class="muted small">${H('quiz.' + x.type)}</span><div>${a && a.ok ? right : th('quiz.answerIs', L(), { t: right })}</div></div></li>`; }).join('')}</ol>
+      <div class="row-btns"><a class="btn btn-ghost" href="#/">${H('nav.home')}</a></div></section></main>`;
+  }
+  const x = qt.list[qt.ans.length], w = WORD_BY_ID[x.id];
+  return `<main class="wrap narrow">
+    <div class="qhead"><h1 class="page-title">${H('cls.quick')}</h1><div class="qhead-r">${q.end ? `<span class="qt-timer" id="qt-timer">${I.repeat}${mmss(Date.parse(q.end) - now())}</span>` : ''}<span class="count">${qt.ans.length + 1} / ${qt.list.length}</span></div></div>
+    <div class="bar"><i style="width:${qt.ans.length / qt.list.length * 100}%"></i></div>
+    <p class="prompt">${H('quiz.' + x.type)} ${x.type === 's2t' || x.type === 'fact' ? '' : groupTag(GROUP_BY_ID[w.group])}</p>
+    ${qBox(x)}
+    <div class="opts">${x.opts.map((v, i) => `<button class="opt" data-act="qtAnswer" data-id="${v}"><span class="k">${i + 1}</span>${qOpt(x, v, false)}</button>`).join('')}</div>
+  </main>`;
+}
+let qtSpoken = null;
+function afterQuickRender() {
+  const qt = S.qt;
+  if (!qt || quickState() !== 'q') return;
+  const x = qt.list[qt.ans.length];
+  if (x && x.type === 'listen' && qtSpoken !== qt.id + ':' + qt.ans.length) { qtSpoken = qt.id + ':' + qt.ans.length; setTimeout(() => speak(WORD_BY_ID[x.id]), 250); }
+}
+function qtAnswer(v) {
+  const qt = S.qt;
+  if (!qt || quickState() !== 'q') return;
+  const i = qt.ans.length, x = qt.list[i], ok = v === x.answer;
+  qt.ans.push({ v, ok });
+  recordAnswer(S.progress, x.id, ok, false); save();
+  BE.logAttempt({ class_id: S.cls.id, word: x.id, qid: qidOf(x), kind: 'quick', seed: qt.id, pos: i, choice: String(v).slice(0, 40), ok });
+  Store.set('netw.qrun', { id: qt.id, ans: qt.ans });
+  render(); window.scrollTo(0, 0);
+}
+/* the countdown and the time limit tick here */
+let lastQS = null;
+setInterval(() => {
+  if (S.route.view !== 'quick' || !S.qt) return;
+  const st = quickState();
+  if (st !== lastQS) { lastQS = st; render(); return; }
+  const q = S.klass && S.klass.quick;
+  const c = document.getElementById('qt-count'); if (c && q) c.textContent = Math.max(0, Math.ceil((Date.parse(q.at) - now()) / 1000));
+  const t = document.getElementById('qt-timer'); if (t && q && q.end) t.lastChild.textContent = mmss(Date.parse(q.end) - now());
+}, 250);
 
 /* the assignment: the same questions for everyone (seeded), resumed after a reload */
 function saveTaskRun() {
@@ -427,6 +515,29 @@ function scheduleAuto() {
     if (S.quiz === Q && Q.i === i && Q.ans && ['quiz', 'review', 'task'].includes(S.route.view)) actions.quizNext();
   }, ms);
 }
+/* one question: the box above the options, and the text of one option (shown = the answer is known) */
+function qBox(q) {
+  const w = WORD_BY_ID[q.id];
+  return {
+    s2t: () => `<div class="qbox scene">${I.scene}<p class="desc">${bi('s.' + q.scene)}</p></div>`,
+    fact: () => `<div class="qbox scene">${I.hash}<p class="desc">${bi('f.' + q.fact)}</p></div>`,
+    d2t: () => `<div class="qbox"><p class="desc">${bi(`w.${w.id}.desc`)}</p></div>`,
+    tip2t: () => `<div class="qbox scene">${I.bulb}<p class="desc">${bi(`w.${w.id}.tip`)}</p></div>`,
+    e2t: () => `<div class="qbox center"><div class="big-en" lang="en">${esc(w.en)}</div></div>`,
+    listen: () => canSpeak ? `<div class="qbox center"><button class="listen-big" data-act="speak" data-id="${w.id}" aria-label="${esc(T('btn.listen'))}">${I.sound}</button><p class="muted small">${H('quiz.tapListen')}</p></div>`
+      : `<div class="qbox center"><div class="big-en alt" lang="en">${esc(w.en)}</div></div>`,   /* a class assignment on a device that cannot speak */
+    t2d: () => `<div class="qbox center"><div class="big-term">${termHTML(w)}</div></div>`
+  }[q.type]();
+}
+function qOpt(q, v, shown) {
+  const f = q.fact && FACT_BY_ID[q.fact];
+  if (q.type === 'fact') return `<span class="fact-opt">${choiceHTML(f.opts[+v], T)}</span>`;
+    const o = WORD_BY_ID[v];
+    if (q.type === 't2d') return `<span>${bi(`w.${v}.desc`)}</span>`;
+    if (q.type === 'listen' && !shown) return `<span>${plainTerm(o)}</span>`;
+    if (q.type === 'e2t') return `<span>${termHTML(o)}</span>`;
+  return `<span>${termHTML(o)}${enName(o)}</span>`;
+}
 const plainTerm = w => `<span class="term" lang="ja">${esc(w.term)}</span>`;
 function quizHTML() {
   const review = S.route.view === 'review', task = S.route.view === 'task';
@@ -454,24 +565,7 @@ function quizHTML() {
         : `<button class="btn btn-primary" data-act="quizStart" data-mode="${Q.mode || 'mix'}">${I.reset}${H('btn.again')}</button><button class="btn btn-ghost" data-act="quizMenu">${H('quiz.other')}</button>`}</div></section></main>`;
   }
   const q = Q.list[Q.i], w = WORD_BY_ID[q.id], a = Q.ans, f = q.fact && FACT_BY_ID[q.fact];
-  const box = {
-    s2t: () => `<div class="qbox scene">${I.scene}<p class="desc">${bi('s.' + q.scene)}</p></div>`,
-    fact: () => `<div class="qbox scene">${I.hash}<p class="desc">${bi('f.' + q.fact)}</p></div>`,
-    d2t: () => `<div class="qbox"><p class="desc">${bi(`w.${w.id}.desc`)}</p></div>`,
-    tip2t: () => `<div class="qbox scene">${I.bulb}<p class="desc">${bi(`w.${w.id}.tip`)}</p></div>`,
-    e2t: () => `<div class="qbox center"><div class="big-en" lang="en">${esc(w.en)}</div></div>`,
-    listen: () => canSpeak ? `<div class="qbox center"><button class="listen-big" data-act="speak" data-id="${w.id}" aria-label="${esc(T('btn.listen'))}">${I.sound}</button><p class="muted small">${H('quiz.tapListen')}</p></div>`
-      : `<div class="qbox center"><div class="big-en alt" lang="en">${esc(w.en)}</div></div>`,   /* a class assignment on a device that cannot speak */
-    t2d: () => `<div class="qbox center"><div class="big-term">${termHTML(w)}</div></div>`
-  }[q.type]();
-  const optBody = v => {
-    if (q.type === 'fact') return `<span class="fact-opt">${choiceHTML(f.opts[+v], T)}</span>`;
-    const o = WORD_BY_ID[v];
-    if (q.type === 't2d') return `<span>${bi(`w.${v}.desc`)}</span>`;
-    if (q.type === 'listen' && !a) return `<span>${plainTerm(o)}</span>`;
-    if (q.type === 'e2t') return `<span>${termHTML(o)}</span>`;
-    return `<span>${termHTML(o)}${enName(o)}</span>`;
-  };
+  const box = qBox(q), optBody = v => qOpt(q, v, !!a);
   const opt = (v, i) => {
     const cls = a ? (v === q.answer ? 'ok' : v === a ? 'ng' : '') : '';
     return `<button class="opt ${cls}" data-act="answer" data-id="${v}" ${a ? 'disabled' : ''}><span class="k">${i + 1}</span>${optBody(v)}</button>`;
@@ -584,6 +678,7 @@ const actions = {
   quizStart(el) { startQuiz(S.route.view === 'review', el.dataset.mode || 'mix'); render(); },
   quizMenu() { clearAuto(); S.quiz = null; render(); },
   answer(el) { answer(el.dataset.id); },
+  qtAnswer(el) { qtAnswer(el.dataset.id); },
   autoNext() { S.settings.autoNext = !S.settings.autoNext; saveSettings(S.settings); render(); scheduleAuto(); },
   quizNext() { clearAuto(); const Q = S.quiz; if (Q.i < Q.list.length - 1) { Q.i++; Q.ans = null; } else Q.state = 'done'; if (Q.task) saveTaskRun(); render(); window.scrollTo(0, 0); },
   taskRestart() { clearAuto(); Store.del('netw.taskrun'); S.quiz = null; render(); window.scrollTo(0, 0); },
@@ -643,6 +738,9 @@ document.addEventListener('keydown', e => {
   const v = S.route.view;
   if ((v === 'quiz' || v === 'review' || v === 'task') && S.quiz && S.quiz.state === 'q' && !S.quiz.ans && /^[1-4]$/.test(e.key)) {
     const id = S.quiz.list[S.quiz.i].opts[+e.key - 1]; if (id) answer(id);
+  }
+  if (v === 'quick' && S.qt && quickState() === 'q' && /^[1-4]$/.test(e.key)) {
+    const id = S.qt.list[S.qt.ans.length].opts[+e.key - 1]; if (id) qtAnswer(id);
   }
   if (v === 'cards') {
     if (e.key === 'ArrowRight') { const b = document.querySelector('[data-act="cardNext"]'); if (b && !b.disabled) b.click(); }

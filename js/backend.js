@@ -47,7 +47,7 @@ export async function resumeMember(code, nickname, pin) {
 /** the class row (null when this student is no longer a member) */
 export async function getClass(classId) {
   const sb = await client();
-  return check(await sb.from('net_classes').select('id, code, name, task, live_until, open').eq('id', classId).maybeSingle());
+  return check(await sb.from('net_classes').select('id, code, name, task, live_until, open, quick').eq('id', classId).maybeSingle());
 }
 export async function myNickname(classId) {
   const sb = await client();
@@ -134,6 +134,8 @@ const pinged = (id, row) => { pingClass(id); return row; };
 export async function updateClass(id, patch) { const sb = await client(); return pinged(id, check(await sb.from('net_classes').update(patch).eq('id', id).select().single())); }
 export async function startLive(id, min) { const sb = await client(); return pinged(id, check(await sb.rpc('net_start_live', { p_class: id, p_min: min }))); }
 export async function stopLive(id) { const sb = await client(); return pinged(id, check(await sb.rpc('net_stop_live', { p_class: id }))); }
+export async function startQuick(id, quick, min) { const sb = await client(); return pinged(id, check(await sb.rpc('net_start_quick', { p_class: id, p_quick: quick, p_min: min }))); }
+export async function stopQuick(id) { const sb = await client(); return pinged(id, check(await sb.rpc('net_stop_quick', { p_class: id }))); }
 export async function deleteClass(id) { const sb = await client(); check(await sb.from('net_classes').delete().eq('id', id)); }
 export async function members(classId) { const sb = await client(); return check(await sb.from('net_members').select('user_id, nickname, joined_at').eq('class_id', classId).order('joined_at')); }
 export async function removeMember(classId, userId) { const sb = await client(); check(await sb.from('net_members').delete().eq('class_id', classId).eq('user_id', userId)); }

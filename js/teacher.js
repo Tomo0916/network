@@ -183,9 +183,10 @@ function testHTML() {
 
 /* =========================================================
  * CLASSES — the same teacher account as SQL Practice (Supabase)
- * C.cur = the open class; C.att = answers to its current assignment (first answer per question counts)
+ * C.cur = the open class; C.all = every answer of the class; C.view = what the live table shows:
+ *   'task' (the assignment) or a quick test's id. In a table the first answer per question counts.
  * ========================================================= */
-const C = { id: null, ready: false, session: null, teacher: null, classes: null, cur: null, members: [], pins: {}, att: [], err: '', busy: false, draft: null, hide: false, unwatch: null, status: '' };
+const C = { all: [], view: 'task', qdraft: { range: 'all', mode: 'mix', n: 5, min: 5 }, slide: null, id: null, ready: false, session: null, teacher: null, classes: null, cur: null, members: [], pins: {}, att: [], err: '', busy: false, draft: null, hide: false, unwatch: null, status: '' };
 const pad = n => String(n).padStart(2, '0');
 const hhmm = iso => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 const newSeed = () => { const d = new Date(); return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${Math.random().toString(36).slice(2, 5)}`; };
@@ -215,17 +216,35 @@ async function openClass(id) {
   if (!C.cur) { C.classes = await BE.myClasses(); C.cur = C.classes.find(c => c.id === id) || null; }
   if (!C.cur) return;
   C.draft = Object.assign({ range: S.t.range, mode: 'mix', n: 10, seed: newSeed() }, C.cur.task || {});
+  C.qdraft = Object.assign({}, C.qdraft, { range: (C.cur.task && C.cur.task.range) || S.t.range });
+  C.view = C.cur.quick ? C.cur.quick.id : 'task'; C.slide = null;
   await Promise.all([loadMembers(), loadAttempts()]);
   if (C.unwatch) C.unwatch();
   C.unwatch = await BE.watchDashboard(id, row => {
-    if (C.cur && C.cur.task && row.kind === 'task' && row.seed === C.cur.task.seed) { C.att.push(row); drawTable(); }
+    C.all.push(row); drawTable(); drawWeak(); if (C.slide) drawSlide();
   }, () => loadMembers().then(() => { drawTable(); drawMembers(); }), st => { C.status = st; const b = document.getElementById('rt-status'); if (b) b.outerHTML = rtStatus(); }).catch(() => null);
 }
 async function loadMembers() {
   C.members = await BE.members(C.cur.id);
   try { C.pins = Object.fromEntries((await BE.pinStatus(C.cur.id)).map(p => [p.user_id, p])); } catch (e) { C.pins = {}; }
 }
-async function loadAttempts() { C.att = C.cur.task ? (await BE.attempts(C.cur.id, C.cur.task.seed)).filter(a => a.kind === 'task') : []; }
+async function loadAttempts() { C.all = await BE.attempts(C.cur.id); }
+/* the questions and the answers of what the live table shows */
+function quickById(id) { const c = C.cur; return (c.quick && c.quick.id === id) ? c.quick : (c.quick_log || []).find(q => q.id === id) || null; }
+function viewData(view = C.view) {
+  const c = C.cur;
+  if (view !== 'task') {
+    const q = quickById(view);
+    if (q) return { kind: 'quick', q, qs: taskQuiz({ range: q.range, mode: q.mode, n: q.n, seed: q.id }, seededRandom), att: C.all.filter(a => a.kind === 'quick' && a.seed === q.id) };
+  }
+  if (!c.task) return null;
+  return { kind: 'task', qs: taskQuiz(c.task, seededRandom), att: C.all.filter(a => a.kind === 'task' && a.seed === c.task.seed) };
+}
+function firstAnswers(att) {   // user → pos → the first answer
+  const first = {};
+  for (const a of att) { const u = first[a.user_id] || (first[a.user_id] = {}); if (a.pos != null && !(a.pos in u)) u[a.pos] = a; }
+  return first;
+}
 
 function classPageHTML() {
   if (!BE.enabled) return `<main class="wrap narrow"><section class="card empty"><h1>${H('tc.title')}</h1><p class="muted">${H('cls.off')}</p></section></main>`;
@@ -286,26 +305,116 @@ function classViewHTML() {
         <div class="row-btns left"><button class="btn btn-primary" data-act="tcSaveTask" ${saved ? 'disabled' : ''}>${H(saved ? 'tc.saved' : 'tc.saveTask')}</button>${c.task && !saved ? `<button class="linkbtn" data-act="tcUndo">${H('tc.undo')}</button>` : ''}</div>
         <p class="muted small">${H('tc.taskTip')}</p>
       </section>
+      ${quickCardHTML()}
     </div>
     <section class="card panel tc-table-card">
-      <div class="tc-table-head"><h2>${I.eye} ${H('tc.table')}</h2>${rtStatus()}
+      <div class="tc-table-head"><h2>${I.eye} ${H('tc.table')}</h2>${rtStatus()}${viewSelect()}
+        <button class="btn btn-ghost btn-sm" data-act="tcSlide" data-p="worst" ${viewData() ? '' : 'disabled'}>${I.screen}${H('tc.mistakes')}</button>
         <label class="chk"><input type="checkbox" data-act="tcHide" ${C.hide ? 'checked' : ''}><span>${H('tc.hide')}</span></label></div>
       <div id="live-table">${tableHTML()}</div>
     </section>
+    <section class="card panel"><h2>${I.bulb} ${H('tc.weak')}</h2><p class="muted small">${H('tc.weakSub')}</p><div id="weak">${weakHTML()}</div></section>
     <section class="card panel"><h2>${I.users} ${H('tc.students')} <span class="count">${C.members.length}</span></h2><div id="members">${membersHTML()}</div></section>
     <div class="row-btns left"><button class="linkbtn danger" data-act="tcDelete">${I.trash}${H('tc.delete')}</button></div>
   </main>`;
 }
+function viewSelect() {
+  const c = C.cur, opts = [];
+  if (c.task) opts.push(['task', T('cls.task')]);
+  if (c.quick) opts.push([c.quick.id, T('tc.quickNow')]);
+  (c.quick_log || []).forEach(q => opts.push([q.id, T('tc.quickPast', { t: hhmm(q.at) + ' ' + (new Date(q.at).getMonth() + 1) + '/' + new Date(q.at).getDate(), n: q.n })]));
+  if (opts.length < 2) return '';
+  return `<select class="view-sel" data-act="tcView">${opts.map(([v, l]) => `<option value="${esc(v)}" ${C.view === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+}
+const QUICK_COUNTS = [5, 10, 15, 20], QUICK_MIN = [0, 3, 5, 10];
+function quickCardHTML() {
+  const c = C.cur, q = c.quick, d = C.qdraft;
+  const sel = (k, opts) => `<select data-q="${k}">${opts.map(([v, l]) => `<option value="${v}" ${String(d[k]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+  if (q) {
+    const wait = Date.parse(q.at) > Date.now(), over = q.end && Date.parse(q.end) < Date.now();
+    return `<section class="card panel tc-quick on"><h2>${I.flag} ${H('cls.quick')}</h2>
+      <p><b>${esc(rangeLabel(q.range))} · ${esc(T('quiz.m.' + q.mode))} · ${q.n}</b></p>
+      <div class="qt-state" id="tc-qstate">${quickStateText(q)}</div>
+      <div class="row-btns left"><button class="btn ${over ? 'btn-primary' : 'btn-danger'}" data-act="tcQuickStop">${H(over ? 'tc.quickSave' : 'tc.quickStop')}</button></div>
+      <p class="muted small">${H('tc.quickStopTip')}</p></section>`;
+  }
+  const ids = wordsIn(d.range).map(w => w.id);
+  return `<section class="card panel form tc-quick"><h2>${I.flag} ${H('cls.quick')}</h2>
+    <label class="fld"><span>${H('range.label')}</span>${sel('range', RANGES.map(r => [r, rangeLabel(r)]))}</label>
+    <div class="tc-row three"><label class="fld"><span>${H('tc.mode')}</span>${sel('mode', TASK_MODES.map(m => [m, `${T('quiz.m.' + m)} (${poolSize(ids, m, { listen: m === 'listen' })})`]))}</label>
+      <label class="fld"><span>${H('quiz.count')}</span>${sel('n', QUICK_COUNTS.map(n => [n, String(n)]))}</label>
+      <label class="fld"><span>${H('tc.limit')}</span>${sel('min', QUICK_MIN.map(m => [m, m ? m + T('tc.min') : T('tc.noLimit')]))}</label></div>
+    <div class="row-btns left"><button class="btn btn-primary" data-act="tcQuickStart">${I.play}${H('tc.quickStart')}</button></div>
+    <p class="muted small">${H('tc.quickTip')}</p></section>`;
+}
+function quickStateText(q) {
+  const t = Date.now(), at = Date.parse(q.at), end = q.end ? Date.parse(q.end) : null;
+  const ms = x => { const v = Math.max(0, Math.ceil(x / 1000)); return `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`; };
+  const f1 = firstAnswers(C.all.filter(a => a.kind === 'quick' && a.seed === q.id));
+  const done = C.members.filter(m => Object.keys(f1[m.user_id] || {}).length >= q.n).length;
+  const head = t < at ? H('tc.quickWait', { s: Math.ceil((at - t) / 1000) }) : end && t > end ? H('tc.quickOver') : end ? H('tc.quickLeft', { t: ms(end - t) }) : H('tc.quickRunning');
+  return `<span class="big">${head}</span><span class="muted">${H('tc.quickDone', { a: done, b: C.members.length })}</span>`;
+}
+/* the weak words of the class: every answer (quiz, review, assignment, quick test) */
+function weakHTML() {
+  const by = {};
+  for (const a of C.all) { const r = by[a.word] || (by[a.word] = { n: 0, ok: 0, who: new Set() }); r.n++; if (a.ok) r.ok++; r.who.add(a.user_id); }
+  const rows = Object.entries(by).filter(([id, r]) => WORD_BY_ID[id] && r.n >= 3).map(([id, r]) => ({ id, r, rate: r.ok / r.n })).sort((a, b) => a.rate - b.rate).slice(0, 10);
+  if (!rows.length) return `<p class="muted">${H('tc.weakNone')}</p>`;
+  return `<ul class="weak-list">${rows.map(({ id, r, rate }) => `<li><span class="w-term" lang="ja">${esc(WORD_BY_ID[id].term)}</span>
+    <span class="w-bar"><i style="width:${Math.round(rate * 100)}%" class="${rate < .5 ? 'low' : rate < .8 ? 'mid' : 'high'}"></i></span><b>${Math.round(rate * 100)}%</b><span class="muted small">${H('tc.weakN', { n: r.n, p: r.who.size })}</span></li>`).join('')}</ul>`;
+}
+const drawWeak = () => { const el = document.getElementById('weak'); if (el) el.innerHTML = weakHTML(); };
+
+/* ---------- the mistakes screen (for the projector): one question, how many chose each option, no names ---------- */
+function qPrompt(q) {
+  const w = WORD_BY_ID[q.id];
+  const body = {
+    s2t: () => H('s.' + q.scene), fact: () => H('f.' + q.fact), d2t: () => H(`w.${w.id}.desc`), tip2t: () => H(`w.${w.id}.tip`),
+    e2t: () => `<span class="big-en" lang="en">${esc(w.en)}</span>`, listen: () => `${I.sound} <span lang="ja">${esc(w.yomi || w.term)}</span>`,
+    t2d: () => `<span class="big-term">${termHTML(w)}</span>`
+  }[q.type]();
+  return `<p class="muted">${H('quiz.' + q.type)}</p><div class="sl-q">${body}</div>`;
+}
+const qOptText = (q, v) => q.type === 'fact' ? choiceHTML(FACT_BY_ID[q.fact].opts[+v], (k, x) => T(k, x)) : q.type === 't2d' ? H(`w.${v}.desc`) : termHTML(WORD_BY_ID[v]);
+function slideOrder(vd) {
+  const f1 = firstAnswers(vd.att);
+  const stat = vd.qs.map((q, p) => { const v = Object.values(f1).map(u => u[p]).filter(Boolean); return { p, n: v.length, rate: v.length ? v.filter(a => a.ok).length / v.length : 2 }; });
+  return stat.filter(x => x.n).sort((a, b) => a.rate - b.rate || a.p - b.p).map(x => x.p);
+}
+function slideHTML() {
+  const vd = viewData(); if (!vd) return '';
+  const p = C.slide.p, q = vd.qs[p], f1 = firstAnswers(vd.att);
+  const answers = Object.values(f1).map(u => u[p]).filter(Boolean);
+  const count = v => answers.filter(a => a.choice === v).length, max = Math.max(1, ...q.opts.map(count));
+  const order = C.slide.order, k = order.indexOf(p);
+  return `<div class="sl-in">
+    <div class="sl-top"><span class="sl-n">${H('tc.qNo', { n: p + 1 })}</span><span class="muted">${H('tc.answered', { n: answers.length })} · ${answers.length ? Math.round(answers.filter(a => a.ok).length / answers.length * 100) + '%' : '—'}</span>
+      <button class="btn btn-ghost btn-sm" data-act="tcSlideReveal">${I.eye}${H(C.slide.show ? 'tc.hideAns' : 'tc.showAns')}</button><button class="btn btn-ghost btn-sm" data-act="tcSlideClose">${I.x}${H('btn.close')}</button></div>
+    ${qPrompt(q)}
+    <div class="sl-opts">${q.opts.map((v, i) => { const n = count(v), right = v === q.answer;
+      return `<div class="sl-opt ${C.slide.show ? (right ? 'ok' : n ? 'ng' : '') : ''}"><span class="k">${i + 1}</span><span class="t">${qOptText(q, v)}</span>
+        <span class="sl-bar"><i style="width:${n / max * 100}%"></i></span><b class="sl-c">${n}</b>${C.slide.show && right ? I.check : ''}</div>`; }).join('')}</div>
+    <div class="sl-nav"><button class="btn btn-ghost" data-act="tcSlideGo" data-d="-1" ${k <= 0 ? 'disabled' : ''}>${I.prev}${H('btn.prev')}</button>
+      <span class="muted small">${H('tc.slideOrder')} ${k + 1} / ${order.length}</span>
+      <button class="btn btn-primary" data-act="tcSlideGo" data-d="1" ${k >= order.length - 1 ? 'disabled' : ''}>${H('btn.next')}${I.next}</button></div></div>`;
+}
+function drawSlide() {
+  let el = document.getElementById('slide');
+  if (!C.slide) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'slide'; el.className = 'slide-full'; document.body.appendChild(el); }
+  el.innerHTML = slideHTML();
+}
+
 function rtStatus() {
   const on = C.status === 'SUBSCRIBED';
   return `<span id="rt-status" class="rt ${on ? 'on' : ''}">${on ? H('tc.rtOn') : H('tc.rtOff')}</span>`;
 }
 function tableHTML() {
-  const c = C.cur;
-  if (!c.task) return `<p class="muted">${H('tc.noTask')}</p>`;
-  const qs = taskQuiz(c.task, seededRandom);
-  const first = {};   // user → pos → ok (first answer)
-  for (const a of C.att) { const u = first[a.user_id] || (first[a.user_id] = {}); if (a.pos != null && !(a.pos in u)) u[a.pos] = a.ok; }
+  const vd = viewData();
+  if (!vd) return `<p class="muted">${H('tc.noTask')}</p>`;
+  const qs = vd.qs, f1 = firstAnswers(vd.att), first = {};
+  for (const u in f1) { first[u] = {}; for (const p in f1[u]) first[u][p] = f1[u][p].ok; }
   if (!C.members.length) return `<p class="muted">${H('tc.noStudents')}</p>`;
   const rows = C.members.map((m, i) => {
     const u = first[m.user_id] || {};
@@ -313,7 +422,7 @@ function tableHTML() {
     return `<tr><th class="nm">${C.hide ? '#' + (i + 1) : esc(m.nickname)}</th>${qs.map((q, p) => `<td class="${p in u ? (u[p] ? 'ok' : 'ng') : ''}">${p in u ? (u[p] ? '○' : '×') : ''}</td>`).join('')}<td class="num">${ok}/${done}</td><td class="num">${done === qs.length ? I.check : `${done}/${qs.length}`}</td></tr>`;
   }).join('');
   const rate = qs.map((q, p) => { const v = C.members.map(m => (first[m.user_id] || {})[p]).filter(x => x !== undefined); return v.length ? Math.round(v.filter(Boolean).length / v.length * 100) : null; });
-  const head = qs.map((q, p) => { const w = WORD_BY_ID[q.id]; return `<th title="${esc(w.term)} · ${esc(T('quiz.' + q.type))}"><span class="qn">${p + 1}</span><span class="qt">${esc(w.term)}</span></th>`; }).join('');
+  const head = qs.map((q, p) => { const w = WORD_BY_ID[q.id]; return `<th title="${esc(w.term)} · ${esc(T('quiz.' + q.type))}"><button class="qhead-btn" data-act="tcSlide" data-p="${p}"><span class="qn">${p + 1}</span><span class="qt">${esc(w.term)}</span></button></th>`; }).join('');
   return `<div class="tbl-scroll"><table class="live-tbl"><thead><tr><th></th>${head}<th>${H('tc.right')}</th><th>${H('tc.progress')}</th></tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr><th>${H('tc.rate')}</th>${rate.map(r => `<td class="rate ${r === null ? '' : r < 50 ? 'low' : r < 80 ? 'mid' : 'high'}">${r === null ? '' : r + '%'}</td>`).join('')}<td></td><td></td></tr></tfoot></table></div>`;
@@ -349,6 +458,25 @@ const classActions = {
       await loadAttempts(); toast(T('tc.taskSent'));
     });
   },
+  tcQuickStart() {
+    const d = C.qdraft;
+    act(async () => { keepRow(await BE.startQuick(C.cur.id, { range: d.range, mode: d.mode, n: Number(d.n) }, Number(d.min))); C.view = C.cur.quick.id; });
+  },
+  tcQuickStop() {
+    if (C.cur.quick && !(C.cur.quick.end && Date.parse(C.cur.quick.end) < Date.now()) && !confirm(T('tc.quickStopAsk'))) return;
+    act(async () => { const id = C.cur.quick && C.cur.quick.id; keepRow(await BE.stopQuick(C.cur.id)); if (id) C.view = id; });
+  },
+  tcSlide(el) {
+    const vd = viewData(); if (!vd) return;
+    const order = slideOrder(vd);
+    if (!order.length) { toast(T('tc.noAnswers')); return; }
+    C.slide = { order, p: el.dataset.p === 'worst' ? order[0] : Number(el.dataset.p), show: false };
+    if (!order.includes(C.slide.p)) C.slide.order = [C.slide.p, ...order];
+    drawSlide();
+  },
+  tcSlideGo(el) { const o = C.slide.order, k = o.indexOf(C.slide.p) + Number(el.dataset.d); if (o[k] !== undefined) { C.slide.p = o[k]; C.slide.show = false; drawSlide(); } },
+  tcSlideReveal() { C.slide.show = !C.slide.show; drawSlide(); },
+  tcSlideClose() { C.slide = null; drawSlide(); },
   tcLive(el) { act(async () => keepRow(await BE.startLive(C.cur.id, Number(el.dataset.min)))); },
   tcStop() { act(async () => keepRow(await BE.stopLive(C.cur.id))); },
   tcPin(el) {
@@ -371,6 +499,8 @@ const classActions = {
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.matches('[data-act="tcHide"]')) { C.hide = el.checked; drawTable(); }
+  if (el.matches('[data-act="tcView"]')) { C.view = el.value; drawTable(); }
+  if (el.dataset.q) { C.qdraft[el.dataset.q] = el.dataset.q === 'range' || el.dataset.q === 'mode' ? el.value : Number(el.value); render(); }
   if (el.matches('[data-act="tcOpen"]')) act(async () => keepRow(await BE.updateClass(C.cur.id, { open: el.checked })));
 });
 document.addEventListener('submit', async e => {
@@ -397,6 +527,13 @@ document.addEventListener('submit', async e => {
   }
 });
 setInterval(() => { if (S.route === 'class' && C.cur && C.cur.live_until && !isLiveC(C.cur)) { C.cur.live_until = null; render(); } }, 20000);
+setInterval(() => { const el = document.getElementById('tc-qstate'); if (el && C.cur && C.cur.quick) el.innerHTML = quickStateText(C.cur.quick); }, 1000);
+document.addEventListener('keydown', e => {
+  if (!C.slide) return;
+  if (e.key === 'Escape') classActions.tcSlideClose();
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { const b = document.querySelector(`[data-act="tcSlideGo"][data-d="${e.key === 'ArrowRight' ? 1 : -1}"]`); if (b && !b.disabled) b.click(); }
+  if (e.key === ' ') { e.preventDefault(); classActions.tcSlideReveal(); }
+});
 
 /* =========================================================
  * EVENTS
