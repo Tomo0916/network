@@ -12,19 +12,29 @@
  *   fact   number / order question (facts.js)
  * ========================================================= */
 import { WORDS, WORD_BY_ID } from './words.js';
-import { GROUPS, GROUP_BY_ID, LESSONS, LAYERS } from './groups.js';
+import { GROUPS, GROUP_BY_ID, LESSONS, LAYERS, CHAPTERS, chapterOf } from './groups.js';
 import { shuffle } from './ui.js';
 import { SCENES, SCENE_BY_ID } from './scenes.js';
 import { FACTS, FACT_BY_ID } from './facts.js';
 
 /* ---------- ranges ----------
- * 'all' · 'L1' · 'L2' · 'lesson-1' · 'g-signal'
- * Teachers can hand out a link with  ?range=lesson-2  */
-export const RANGES = ['all', ...LAYERS, ...LESSONS.map(n => `lesson-${n}`), ...GROUPS.map(g => `g-${g.id}`)];
+ * 'all' · 'ch-2' (a chapter) · 'lesson-13' (a lesson of the textbook) · 'L1' (a layer) · 'g-signal' (a group)
+ * Only chapters, lessons, layers and groups that have words are offered.
+ * Teachers can hand out a link with  ?range=lesson-13  */
+const has = f => WORDS.some(f);
+export const RANGE_SETS = {
+  all: ['all'],
+  chapters: CHAPTERS.map(c => `ch-${c.n}`).filter(r => has(w => chapterOf(w.lesson) === +r.slice(3))),
+  lessons: LESSONS.filter(n => has(w => w.lesson === n)).map(n => `lesson-${n}`),
+  layers: LAYERS.filter(l => has(w => GROUP_BY_ID[w.group].layer === l)),
+  groups: GROUPS.filter(g => has(w => w.group === g.id)).map(g => `g-${g.id}`)
+};
+export const RANGES = Object.values(RANGE_SETS).flat();
 export const isRange = r => RANGES.includes(r);
 export function inRange(w, r) {
   if (!r || r === 'all') return true;
   if (LAYERS.includes(r)) return GROUP_BY_ID[w.group].layer === r;
+  if (r.startsWith('ch-')) return chapterOf(w.lesson) === Number(r.slice(3));
   if (r.startsWith('lesson-')) return w.lesson === Number(r.slice(7));
   if (r.startsWith('g-')) return w.group === r.slice(2);
   return true;

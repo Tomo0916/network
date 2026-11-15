@@ -10,12 +10,12 @@
 import { LANGS, loadLang, detectLang, htmlLang, t, th, esc } from './i18n.js';
 import { WORD_BY_ID } from './words.js';
 import { DEMOS } from './groups.js';
-import { RANGES, isRange, wordsIn, makeTest, scenesIn, factsIn, taskQuiz, TASK_MODES, TASK_COUNTS, poolSize } from './quiz.js';
+import { RANGES, RANGE_SETS, isRange, wordsIn, makeTest, scenesIn, factsIn, taskQuiz, TASK_MODES, TASK_COUNTS, poolSize } from './quiz.js';
 import * as BE from './backend.js';
 import { FACT_BY_ID } from './facts.js';
 import { Store, loadSettings, saveSettings } from './store.js';
 import { I, applySettings, langSelect, shuffle, seededRandom, toast } from './ui.js';
-import { termHTML, enName, rangeLabel as rangeLabelOf, speakBtn as speakBtnOf, speak, choiceHTML } from './common.js';
+import { termHTML, enName, rangeLabel as rangeLabelOf, rangeOptions, speakBtn as speakBtnOf, speak, choiceHTML } from './common.js';
 
 const KEY = 'netw.teacher';
 const S = {
@@ -38,11 +38,12 @@ function bi(k, v) {
 }
 const saveT = () => Store.set(KEY, S.t);
 const rangeLabel = r => rangeLabelOf(r, T);
+const rangeWithCount = r => `${rangeLabel(r)} (${T('range.words', { n: wordsIn(r).length })})`;
 const speakBtn = w => speakBtnOf(w, T('btn.listen'));
 const langName = c => LANGS.find(l => l.code === c).name;
 
 function rangeSelect(name = 'range') {
-  return `<label class="range"><span>${H('range.label')}</span><select data-t="${name}">${RANGES.map(r => `<option value="${r}" ${r === S.t.range ? 'selected' : ''}>${esc(rangeLabel(r))} (${esc(T('range.words', { n: wordsIn(r).length }))})</option>`).join('')}</select></label>`;
+  return `<label class="range"><span>${H('range.label')}</span><select data-t="${name}">${rangeOptions(RANGE_SETS, S.t.range, rangeWithCount, T)}</select></label>`;
 }
 const field = (label, inner) => `<label class="fld"><span>${label}</span>${inner}</label>`;
 const select = (k, opts) => `<select data-t="${k}">${opts.map(([v, label]) => `<option value="${v}" ${String(S.t[k]) === String(v) ? 'selected' : ''}>${esc(label)}</option>`).join('')}</select>`;
@@ -298,7 +299,7 @@ function classViewHTML() {
       </section>
       <section class="card panel form tc-task">
         <h2>${I.flag} ${H('cls.task')}</h2>
-        <label class="fld"><span>${H('range.label')}</span>${dsel('range', RANGES.map(r => [r, `${rangeLabel(r)} (${T('range.words', { n: wordsIn(r).length })})`]))}</label>
+        <label class="fld"><span>${H('range.label')}</span><select data-d="range">${rangeOptions(RANGE_SETS, d.range, rangeWithCount, T)}</select></label>
         <div class="tc-row"><label class="fld"><span>${H('tc.mode')}</span>${dsel('mode', modeOpts)}</label>
         <label class="fld"><span>${H('quiz.count')}</span>${dsel('n', TASK_COUNTS.map(n => [n, String(n)]))}</label></div>
         <div class="tc-seed muted small">${H('tc.set')} <span class="mono">${esc(d.seed)}</span> <button class="linkbtn" data-act="tcSeed">${I.shuffle}${H('tc.newSet')}</button></div>
@@ -340,7 +341,7 @@ function quickCardHTML() {
   }
   const ids = wordsIn(d.range).map(w => w.id);
   return `<section class="card panel form tc-quick"><h2>${I.flag} ${H('cls.quick')}</h2>
-    <label class="fld"><span>${H('range.label')}</span>${sel('range', RANGES.map(r => [r, rangeLabel(r)]))}</label>
+    <label class="fld"><span>${H('range.label')}</span><select data-q="range">${rangeOptions(RANGE_SETS, d.range, rangeWithCount, T)}</select></label>
     <div class="tc-row three"><label class="fld"><span>${H('tc.mode')}</span>${sel('mode', TASK_MODES.map(m => [m, `${T('quiz.m.' + m)} (${poolSize(ids, m, { listen: m === 'listen' })})`]))}</label>
       <label class="fld"><span>${H('quiz.count')}</span>${sel('n', QUICK_COUNTS.map(n => [n, String(n)]))}</label>
       <label class="fld"><span>${H('tc.limit')}</span>${sel('min', QUICK_MIN.map(m => [m, m ? m + T('tc.min') : T('tc.noLimit')]))}</label></div>

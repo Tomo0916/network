@@ -12,12 +12,12 @@
 import { LANGS, loadLang, detectLang, htmlLang, t, th, esc } from './i18n.js';
 import { WORDS, WORD_BY_ID } from './words.js';
 import { GROUP_BY_ID, DEMOS } from './groups.js';
-import { RANGES, isRange, wordsIn, groupsIn, makeQuiz, makeSort, poolSize, taskQuiz, taskKey, qidOf } from './quiz.js';
+import { RANGES, RANGE_SETS, isRange, wordsIn, groupsIn, makeQuiz, makeSort, poolSize, taskQuiz, taskKey, qidOf } from './quiz.js';
 import { FACT_BY_ID } from './facts.js';
 import { Store, loadSettings, saveSettings, loadProgress, saveProgress, recordAnswer, dueWords } from './store.js';
 import * as BE from './backend.js';
 import { I, applySettings, langSelect, langOptions, modal, closeModal, seededRandom, toast } from './ui.js';
-import { termHTML, enName, rangeLabel as rangeLabelOf, speakBtn as speakBtnOf, speak, canSpeak, choiceHTML } from './common.js';
+import { termHTML, enName, rangeLabel as rangeLabelOf, rangeOptions, speakBtn as speakBtnOf, speak, canSpeak, choiceHTML } from './common.js';
 
 const S = {
   settings: loadSettings(null),
@@ -63,9 +63,8 @@ const words = () => wordsIn(S.settings.range);
 /* ---------- range ---------- */
 const rangeLabel = r => rangeLabelOf(r, T);
 function rangeSelect() {
-  const opt = r => `<option value="${r}" ${r === S.settings.range ? 'selected' : ''}>${esc(rangeLabel(r))} (${esc(T('range.words', { n: wordsIn(r).length }))})</option>`;
   return `<label class="range"><span>${H('range.label')}</span><select data-act="range" aria-label="${esc(T('range.label'))}">
-    ${RANGES.map(opt).join('')}
+    ${rangeOptions(RANGE_SETS, S.settings.range, r => `${rangeLabel(r)} (${T('range.words', { n: wordsIn(r).length })})`, T)}
   </select></label>`;
 }
 

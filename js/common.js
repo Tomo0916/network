@@ -18,8 +18,16 @@ export const enName = w => `<span class="en-name" lang="en">${esc(w.en)}</span>`
 export function rangeLabel(r, T) {
   if (r === 'all') return T('range.all');
   if (LAYERS.includes(r)) return T('layer.' + r);
-  if (r.startsWith('lesson-')) return T('range.lesson', { n: r.slice(7) });
+  if (r.startsWith('ch-')) return T('range.chapter', { n: r.slice(3) }) + ' ' + T('ch.' + r.slice(3));
+  if (r.startsWith('lesson-')) return T('range.lesson', { n: r.slice(7) }) + ' ' + T('lesson.' + r.slice(7));
   return T('g.' + r.slice(2));
+}
+/** the <option>s of a range menu, in groups (chapters, lessons, layers, groups).
+ *  sets = RANGE_SETS from quiz.js; label(r) = the text of one option */
+export function rangeOptions(sets, selected, label, T) {
+  const opt = r => `<option value="${r}" ${r === selected ? 'selected' : ''}>${esc(label(r))}</option>`;
+  return sets.all.map(opt).join('') + ['chapters', 'lessons', 'layers', 'groups'].filter(k => sets[k].length)
+    .map(k => `<optgroup label="${esc(T('range.set.' + k))}">${sets[k].map(opt).join('')}</optgroup>`).join('');
 }
 
 /* listen: the browser reads the Japanese term aloud (no sound file needed) */
