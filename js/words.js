@@ -42,6 +42,31 @@ export const WORDS = [
   // ---- MAC address and rules ----
   { id: 'mac', term: 'MACアドレス', yomi: 'マックアドレス', en: 'MAC address', group: 'mac', lesson: 2, related: ['nic', 'macfilter', 'bps'], demo: 'frame' },
   { id: 'csmacd', term: 'CSMA/CD', yomi: 'シーエスエムエー・シーディー', en: 'Carrier Sense Multiple Access / Collision Detection', group: 'mac', lesson: 2, related: ['collision', 'protocol', 'flooding'], demo: 'csmacd' },
-  { id: 'macfilter', term: 'MACアドレスフィルタリング', yomi: 'マックアドレスフィルタリング', en: 'MAC address filtering', group: 'mac', lesson: 2, related: ['mac', 'switch', 'csmacd'] }
+  { id: 'macfilter', term: 'MACアドレスフィルタリング', yomi: 'マックアドレスフィルタリング', en: 'MAC address filtering', group: 'mac', lesson: 2, related: ['mac', 'switch', 'csmacd'] },
+  // ---- Layer 3: IP basics ----
+  { id: 'ip', term: 'IP', yomi: 'アイピー', en: 'Internet Protocol', group: 'l3', lesson: 3, related: ['ethernet', 'icmp', 'arp'] },
+  { id: 'packet', term: 'パケット', en: 'Packet', group: 'l3', lesson: 3, related: ['framing', 'ttl', 'ip'], demo: 'route' },
+  { id: 'ipaddress', term: 'IPアドレス', yomi: 'アイピーアドレス', en: 'IP address', group: 'l3', lesson: 3, related: ['mac', 'subnetmask', 'gateway'], demo: 'subnet' },
+  { id: 'privateip', term: 'プライベートIPアドレス', yomi: 'プライベートアイピーアドレス', en: 'Private IP address', group: 'l3', lesson: 3, related: ['globalip', 'nat', 'ipaddress'] },
+  { id: 'globalip', term: 'グローバルIPアドレス', yomi: 'グローバルアイピーアドレス', en: 'Global IP address', group: 'l3', lesson: 3, related: ['privateip', 'nat', 'ipaddress'] },
+  // ---- network part and host part ----
+  { id: 'netpart', term: 'ネットワーク部', yomi: 'ネットワークぶ', en: 'Network portion', group: 'subnet', lesson: 3, related: ['hostpart', 'netaddr', 'subnetmask'], demo: 'subnet' },
+  { id: 'hostpart', term: 'ホスト部', yomi: 'ホストぶ', en: 'Host portion', group: 'subnet', lesson: 3, related: ['netpart', 'bcastaddr', 'subnetmask'], demo: 'subnet' },
+  { id: 'subnetmask', term: 'サブネットマスク', en: 'Subnet mask', group: 'subnet', lesson: 3, related: ['prefix', 'netpart', 'gateway'], demo: 'subnet' },
+  { id: 'prefix', term: 'プレフィックス長', yomi: 'プレフィックスちょう', en: 'Prefix length (CIDR notation)', group: 'subnet', lesson: 3, related: ['subnetmask', 'netpart', 'hostpart'], demo: 'subnet' },
+  { id: 'netaddr', term: 'ネットワークアドレス', en: 'Network address', group: 'subnet', lesson: 3, related: ['bcastaddr', 'gateway', 'netpart'], demo: 'subnet' },
+  { id: 'bcastaddr', term: 'ブロードキャストアドレス', en: 'Broadcast address', group: 'subnet', lesson: 3, related: ['netaddr', 'broadcast', 'hostpart'], demo: 'subnet' },
+  // ---- routing ----
+  { id: 'router', term: 'ルーター', en: 'Router', group: 'routing', lesson: 4, related: ['switch', 'gateway', 'hub'], demo: 'route' },
+  { id: 'routing', term: 'ルーティング', en: 'Routing', group: 'routing', lesson: 4, related: ['flooding', 'routingtable', 'arp'], demo: 'route' },
+  { id: 'routingtable', term: 'ルーティングテーブル', en: 'Routing table', group: 'routing', lesson: 4, related: ['arp', 'routing', 'subnetmask'], demo: 'route' },
+  { id: 'gateway', term: 'デフォルトゲートウェイ', en: 'Default gateway', group: 'routing', lesson: 4, related: ['router', 'netaddr', 'dhcp'], demo: 'route' },
+  { id: 'ttl', term: 'TTL', yomi: 'ティーティーエル', en: 'Time To Live', group: 'routing', lesson: 4, related: ['packet', 'icmp', 'routing'], demo: 'route' },
+  // ---- helpers of IP ----
+  { id: 'arp', term: 'ARP', yomi: 'アープ', en: 'Address Resolution Protocol', group: 'l3help', lesson: 4, related: ['dhcp', 'icmp', 'broadcast'], demo: 'arp' },
+  { id: 'icmp', term: 'ICMP', yomi: 'アイシーエムピー', en: 'Internet Control Message Protocol', group: 'l3help', lesson: 4, related: ['ping', 'arp', 'ip'] },
+  { id: 'ping', term: 'ping', yomi: 'ピン', en: 'ping', group: 'l3help', lesson: 4, related: ['icmp', 'arp', 'ttl'] },
+  { id: 'dhcp', term: 'DHCP', yomi: 'ディーエイチシーピー', en: 'Dynamic Host Configuration Protocol', group: 'l3help', lesson: 4, related: ['arp', 'nat', 'gateway'] },
+  { id: 'nat', term: 'NAT', yomi: 'ナット', en: 'Network Address Translation', group: 'l3help', lesson: 4, related: ['dhcp', 'privateip', 'router'] }
 ];
 export const WORD_BY_ID = Object.fromEntries(WORDS.map(w => [w.id, w]));

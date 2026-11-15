@@ -37,7 +37,32 @@ export const FACTS = [
     SEQ('fx.listen', 'fx.send', 'fx.detect', 'fx.wait', 'fx.resend'),
     SEQ('fx.send', 'fx.listen', 'fx.detect', 'fx.wait', 'fx.resend'),
     SEQ('fx.listen', 'fx.send', 'fx.wait', 'fx.detect', 'fx.resend'),
-    SEQ('fx.send', 'fx.detect', 'fx.listen', 'fx.resend', 'fx.wait')] }
+    SEQ('fx.send', 'fx.detect', 'fx.listen', 'fx.resend', 'fx.wait')] },
+  // ---- Layer 3 ----
+  { id: 'ipv4bits', word: 'ipaddress', opts: ['32', '48', '64', '128'] },
+  { id: 'octetbits', word: 'ipaddress', opts: ['8', '4', '16', '32'] },
+  { id: 'octetmax', word: 'ipaddress', opts: ['255', '256', '99', '1024'] },
+  { id: 'mask24', word: 'subnetmask', opts: ['255.255.255.0', '255.255.0.0', '255.255.255.255', '255.0.0.0'] },
+  { id: 'mask16', word: 'prefix', opts: ['/16', '/8', '/24', '/32'] },
+  { id: 'hosts24', word: 'hostpart', opts: ['254', '256', '255', '24'] },
+  { id: 'netaddr24', word: 'netaddr', opts: ['192.168.1.0', '192.168.1.255', '192.168.1.1', '192.168.0.0'] },
+  { id: 'bcast24', word: 'bcastaddr', opts: ['192.168.1.255', '192.168.1.0', '192.168.1.254', '255.255.0.0'] },
+  { id: 'privateone', word: 'privateip', opts: ['192.168.10.5', '8.8.8.8', '133.10.1.1', '210.152.1.1'] },
+  { id: 'iplayer', word: 'ip', opts: ['3', '2', '4', '1'] },
+  { id: 'routerlayer', word: 'router', opts: ['3', '2', '1', '4'] },
+  { id: 'ttlrouter', word: 'ttl', opts: [{ k: 'fx.ttlDown' }, { k: 'fx.ttlUp' }, { k: 'fx.ttlZero' }, { k: 'fx.ttlSame' }] },
+  { id: 'arporder', word: 'arp', opts: [
+    SEQ('fx.arpAsk', 'fx.arpReply', 'fx.arpSave', 'fx.arpSend'),
+    SEQ('fx.arpSend', 'fx.arpAsk', 'fx.arpReply', 'fx.arpSave'),
+    SEQ('fx.arpReply', 'fx.arpAsk', 'fx.arpSave', 'fx.arpSend'),
+    SEQ('fx.arpAsk', 'fx.arpSave', 'fx.arpReply', 'fx.arpSend')] },
+  { id: 'dhcporder', word: 'dhcp', opts: [
+    SEQ('fx.dDiscover', 'fx.dOffer', 'fx.dRequest', 'fx.dAck'),
+    SEQ('fx.dRequest', 'fx.dOffer', 'fx.dDiscover', 'fx.dAck'),
+    SEQ('fx.dDiscover', 'fx.dRequest', 'fx.dOffer', 'fx.dAck'),
+    SEQ('fx.dOffer', 'fx.dDiscover', 'fx.dAck', 'fx.dRequest')] },
+  { id: 'pingproto', word: 'ping', opts: [SEQ('w:icmp'), SEQ('w:arp'), SEQ('w:dhcp'), SEQ('w:nat')] },
+  { id: 'gwsame', word: 'gateway', opts: ['192.168.1.1', '192.168.2.1', '10.0.0.1', '192.168.1.255'] }
 ];
 export const FACT_BY_ID = Object.fromEntries(FACTS.map(f => [f.id, f]));
 export const factsOf = wordId => FACTS.filter(f => f.word === wordId);

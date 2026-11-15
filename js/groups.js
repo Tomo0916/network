@@ -2,7 +2,7 @@
  * groups.js — layers, groups and lessons.
  * Names are translated in i18n/<lang>.js:  g.<id>  and  lesson.<n>
  * ========================================================= */
-export const LAYERS = ['L1', 'L2'];
+export const LAYERS = ['L1', 'L2', 'L3'];
 
 /* order = order on screen. color = CSS variable in css/app.css */
 export const GROUPS = [
@@ -11,12 +11,16 @@ export const GROUPS = [
   { id: 'devices', layer: 'L1' },
   { id: 'l2', layer: 'L2' },
   { id: 'addressing', layer: 'L2' },
-  { id: 'mac', layer: 'L2' }
+  { id: 'mac', layer: 'L2' },
+  { id: 'l3', layer: 'L3' },
+  { id: 'subnet', layer: 'L3' },
+  { id: 'routing', layer: 'L3' },
+  { id: 'l3help', layer: 'L3' }
 ];
 export const GROUP_BY_ID = Object.fromEntries(GROUPS.map(g => [g.id, g]));
 
 /* lessons that exist so far (the number is what the teacher writes on the board) */
-export const LESSONS = [1, 2];
+export const LESSONS = [1, 2, 3, 4];
 
 /* animations (js/demos/<id>.js) */
-export const DEMOS = ['repeater', 'hubswitch', 'cast', 'frame', 'csmacd'];
+export const DEMOS = ['repeater', 'hubswitch', 'cast', 'frame', 'csmacd', 'subnet', 'arp', 'route'];
