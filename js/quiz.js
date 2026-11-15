@@ -67,26 +67,27 @@ export const factsIn = ids => FACTS.filter(f => ids.includes(f.word));
  *      'scene'  situations only        'fact'  numbers and order only        'listen'  listening only
  * opts.listen   false when this device cannot speak (no listening questions then)
  * opts.weight   id → 0..1, words with a higher weight come first (words the student often gets wrong)
+ * opts.rnd      a seeded random (class assignment: every student gets the same questions in the same order)
  * Each word is asked once before any word is asked a second time, always with a different kind of question. */
 export function questionPool(ids, mode = 'mix', opts = {}) {
-  const canListen = opts.listen !== false;
-  if (mode === 'scene') return scenesIn(ids).map(s => ({ id: s.word, make: () => sceneQuestion(s.id) }));
-  if (mode === 'fact') return factsIn(ids).map(f => ({ id: f.word, make: () => factQuestion(f.id) }));
-  if (mode === 'listen') return canListen ? ids.map(id => ({ id, make: () => makeQuestion(id, 'listen') })) : [];
+  const canListen = opts.listen !== false, rnd = opts.rnd || Math.random;
+  if (mode === 'scene') return scenesIn(ids).map(s => ({ id: s.word, make: () => sceneQuestion(s.id, rnd) }));
+  if (mode === 'fact') return factsIn(ids).map(f => ({ id: f.word, make: () => factQuestion(f.id, rnd) }));
+  if (mode === 'listen') return canListen ? ids.map(id => ({ id, make: () => makeQuestion(id, 'listen', rnd) })) : [];
   const types = WORD_TYPES.filter(t => t !== 'listen' || canListen);
   return [
-    ...ids.flatMap(id => types.map(t => ({ id, make: () => makeQuestion(id, t) }))),
-    ...scenesIn(ids).map(s => ({ id: s.word, make: () => sceneQuestion(s.id) })),
-    ...factsIn(ids).map(f => ({ id: f.word, make: () => factQuestion(f.id) }))
+    ...ids.flatMap(id => types.map(t => ({ id, make: () => makeQuestion(id, t, rnd) }))),
+    ...scenesIn(ids).map(s => ({ id: s.word, make: () => sceneQuestion(s.id, rnd) })),
+    ...factsIn(ids).map(f => ({ id: f.word, make: () => factQuestion(f.id, rnd) }))
   ];
 }
 export function makeQuiz(ids, n = 10, mode = 'mix', opts = {}) {
-  const weight = opts.weight || (() => 0);
+  const weight = opts.weight || (() => 0), rnd = opts.rnd || Math.random;
   const pool = questionPool(ids, mode, opts);
   /* group the pool by word, words with a high weight first */
   const byWord = {};
-  shuffle(pool).forEach(p => (byWord[p.id] = byWord[p.id] || []).push(p));
-  const order = Object.keys(byWord).map(id => [id, Math.random() - weight(id)]).sort((a, b) => a[1] - b[1]).map(x => x[0]);
+  shuffle(pool, rnd).forEach(p => (byWord[p.id] = byWord[p.id] || []).push(p));
+  const order = Object.keys(byWord).map(id => [id, rnd() - weight(id)]).sort((a, b) => a[1] - b[1]).map(x => x[0]);
   const out = [];
   for (let round = 0; out.length < n; round++) {
     let added = false;
@@ -97,8 +98,24 @@ export function makeQuiz(ids, n = 10, mode = 'mix', opts = {}) {
     }
     if (!added) break;
   }
-  return shuffle(out);
+  return shuffle(out, rnd);
 }
+/** which question this is, for the class record: d2t:hub · s:hub3 · f:macbits */
+export const qidOf = q => q.scene ? 's:' + q.scene : q.fact ? 'f:' + q.fact : q.type + ':' + q.id;
+
+/* ---------- class assignment ----------
+ * task = { range, mode, n, seed } (set by the teacher). Every student, and the teacher's live table,
+ * makes the same questions from it. Listening questions are always included in the listen mode only,
+ * so that the questions do not depend on whether a device can speak. */
+export const TASK_MODES = ['mix', 'scene', 'fact', 'listen'];
+export const TASK_COUNTS = [5, 10, 15, 20];
+export function taskQuiz(task, seededRandom) {
+  if (!task || !isRange(task.range)) return [];
+  const ids = wordsIn(task.range).map(w => w.id);
+  const mode = TASK_MODES.includes(task.mode) ? task.mode : 'mix';
+  return makeQuiz(ids, Math.max(1, Math.min(40, +task.n || 10)), mode, { listen: mode === 'listen', rnd: seededRandom(`${task.seed}|${task.range}|${mode}`) });
+}
+export const taskKey = task => task ? `${task.seed}|${task.range}|${task.mode}|${task.n}` : '';
 export const poolSize = (ids, mode, opts) => questionPool(ids, mode, opts).length;
 
 /* ---------- paper test (same settings + version → same test) ---------- */

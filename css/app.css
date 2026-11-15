@@ -539,3 +539,76 @@ svg.listening .bus { stroke-dasharray: 10 8; animation: march 1s linear infinite
 #next-btn.auto-go::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: rgba(255,255,255,.75); transform-origin: left; animation: autofill var(--auto, 2s) linear forwards; }
 @keyframes autofill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @media (prefers-reduced-motion: reduce) { #next-btn.auto-go::after { animation-duration: var(--auto, 2s); } }
+
+/* ---------- class (students) ---------- */
+.cls-card { padding: 16px 18px; margin: 18px 0 4px; display: grid; gap: 12px; color: var(--ink); text-decoration: none; }
+.cls-card > svg, .cls-head > svg { width: 22px; height: 22px; color: var(--accent); flex: none; }
+.cls-card.join { grid-template-columns: auto 1fr auto; align-items: center; border-style: dashed; }
+.cls-card.join b { display: block; }
+.cls-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cls-head > div { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.cls-task { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); }
+.cls-task > div { display: grid; gap: 2px; flex: 1; min-width: 180px; }
+.live-tag { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 800; color: var(--bad); background: var(--bad-soft); padding: 3px 10px; border-radius: 999px; }
+.live-tag svg { width: 14px; height: 14px; animation: livepulse 1.6s ease-in-out infinite; }
+.live-tag.big { font-size: .95rem; padding: 6px 14px; }
+@keyframes livepulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .live-tag svg { animation: none; } }
+.live-banner { background: var(--bad); color: #fff; }
+.live-banner .wrap { display: flex; align-items: center; gap: 10px; padding-block: 8px; flex-wrap: wrap; font-weight: 700; }
+.live-banner svg { width: 18px; height: 18px; }
+.live-banner .btn { margin-left: auto; }
+.badge.dot { min-width: 8px; width: 8px; height: 8px; padding: 0; line-height: 8px; }
+input.up { text-transform: uppercase; letter-spacing: .12em; }
+.big-en.alt { font-size: 1.4rem; }
+
+/* ---------- class (teacher) ---------- */
+.tc-who { margin-top: 18px; }
+.tc-new { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; padding: 16px 18px; margin-bottom: 16px; }
+.tc-new .fld { flex: 1; min-width: 220px; margin: 0; }
+.tc-list { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.tc-item { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 14px 16px; color: var(--ink); text-decoration: none; align-items: center; }
+.tc-item:hover { border-color: var(--accent); }
+.tc-item .mono { color: var(--accent); font-weight: 700; }
+.tc-item > svg { grid-column: 2; grid-row: 1 / span 3; width: 18px; color: var(--ink-3); }
+.tc-live { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tc-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); margin: 14px 0 16px; }
+.tc-grid h2, .tc-table-card h2, .panel > h2 { display: flex; align-items: center; gap: 8px; font-size: 1.05rem; margin: 0 0 12px; }
+.tc-grid h2 svg, .panel > h2 svg { width: 18px; height: 18px; color: var(--accent); }
+.tc-join-in { display: grid; grid-template-columns: 150px 1fr; gap: 16px; align-items: start; }
+.tc-join-in > div { display: grid; gap: 8px; min-width: 0; }
+.small-qr { width: 150px; }
+.code-big { font-size: 2.2rem; font-weight: 800; letter-spacing: .14em; color: var(--accent); line-height: 1; }
+.url-box.small { font-size: .74rem; word-break: break-all; }
+.tc-row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+.tc-seed { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.tc-seed .linkbtn svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 3px; }
+.note { background: var(--warn-soft); color: var(--ink); border-radius: 10px; padding: 10px 14px; margin: 10px 0; font-size: .9rem; }
+.tc-table-card { margin-bottom: 16px; }
+.tc-table-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.tc-table-head h2 { margin: 0; }
+.tc-table-head .chk { margin-left: auto; }
+.rt { font-size: .74rem; font-weight: 700; color: var(--ink-3); display: inline-flex; align-items: center; gap: 6px; }
+.rt::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
+.rt.on { color: var(--ok); } .rt.on::before { background: var(--ok); }
+.tbl-scroll { overflow-x: auto; }
+.live-tbl { border-collapse: collapse; font-size: .85rem; min-width: 100%; }
+.live-tbl th, .live-tbl td { border: 1px solid var(--line); padding: 5px 6px; text-align: center; white-space: nowrap; }
+.live-tbl thead th { font-weight: 600; vertical-align: bottom; background: var(--surface-2); }
+.live-tbl thead .qn { display: block; font-family: var(--mono); font-weight: 700; }
+.live-tbl thead .qt { display: block; font-size: .7rem; color: var(--ink-2); max-width: 5.5em; overflow: hidden; text-overflow: ellipsis; }
+.live-tbl th.nm { text-align: left; max-width: 12em; overflow: hidden; text-overflow: ellipsis; }
+.live-tbl td.ok { background: var(--ok-soft); color: var(--ok); font-weight: 800; }
+.live-tbl td.ng { background: var(--bad-soft); color: var(--bad); font-weight: 800; }
+.live-tbl td.num { font-family: var(--mono); }
+.live-tbl td svg { width: 16px; height: 16px; color: var(--ok); vertical-align: -3px; }
+.live-tbl tfoot th, .live-tbl tfoot td { background: var(--surface-2); font-weight: 700; }
+.live-tbl td.rate.low { color: var(--bad); } .live-tbl td.rate.mid { color: var(--warn); } .live-tbl td.rate.high { color: var(--ok); }
+.tc-members { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+.tc-members li { display: flex; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tc-members li b { min-width: 8em; }
+.tc-members .linkbtn svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 3px; }
+.tc-members li .muted { flex: 1; }
+.linkbtn.danger svg { width: 15px; height: 15px; vertical-align: -3px; margin-right: 4px; }
+.qr-code-big { font-size: 4rem; font-weight: 800; letter-spacing: .16em; margin: 0; }
+@media (max-width: 640px) { .tc-join-in { grid-template-columns: 1fr; } .small-qr { width: 140px; } .tc-row { grid-template-columns: 1fr; } .code-big { font-size: 1.8rem; } }

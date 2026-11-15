@@ -5,16 +5,18 @@
  *          #/words        word list          #/cards   flashcards
  *          #/quiz         4-choice quiz      #/sort    sorting game
  *          #/review       today's review     #/demos/<id>  animations
- * URL options:  ?lang=vi   ?range=lesson-2   ?present=1
+ *          #/class        join a class       #/task    the class assignment
+ * URL options:  ?lang=vi   ?range=lesson-2   ?present=1   ?class=<class code>
  * Progress is stored by word id, so switching language never touches it.
  * ========================================================= */
 import { LANGS, loadLang, detectLang, htmlLang, t, th, esc } from './i18n.js';
 import { WORDS, WORD_BY_ID } from './words.js';
 import { GROUP_BY_ID, DEMOS } from './groups.js';
-import { RANGES, isRange, wordsIn, groupsIn, makeQuiz, makeSort, poolSize } from './quiz.js';
+import { RANGES, isRange, wordsIn, groupsIn, makeQuiz, makeSort, poolSize, taskQuiz, taskKey, qidOf } from './quiz.js';
 import { FACT_BY_ID } from './facts.js';
-import { loadSettings, saveSettings, loadProgress, saveProgress, recordAnswer, dueWords } from './store.js';
-import { I, applySettings, langSelect, langOptions, modal, closeModal } from './ui.js';
+import { Store, loadSettings, saveSettings, loadProgress, saveProgress, recordAnswer, dueWords } from './store.js';
+import * as BE from './backend.js';
+import { I, applySettings, langSelect, langOptions, modal, closeModal, seededRandom, toast } from './ui.js';
 import { termHTML, enName, rangeLabel as rangeLabelOf, speakBtn as speakBtnOf, speak, canSpeak, choiceHTML } from './common.js';
 
 const S = {
@@ -24,13 +26,19 @@ const S = {
   cards: { i: 0, flipped: false, onlyNew: false },
   quiz: null,
   sort: null,
-  query: ''
+  query: '',
+  /* class: cls = what this browser remembers ({id, code, name, nick}); klass = the class row as last read */
+  cls: Store.get('netw.class', null),
+  klass: null,
+  join: { code: '', resume: false, err: '', busy: false },
+  skew: 0          // server clock − this device's clock (ms)
 };
 S.settings.lang = detectLang(S.settings.lang);
 const qs = new URLSearchParams(location.search);
 if (qs.get('present') === '1') S.settings.presenter = true;
 if (isRange(qs.get('range'))) { S.settings.range = qs.get('range'); saveSettings(S.settings); }
 if (!isRange(S.settings.range)) S.settings.range = 'all';
+if (qs.get('class')) S.join.code = qs.get('class').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
 
 const app = document.getElementById('app');
 const L = () => S.settings.lang;
@@ -64,7 +72,7 @@ function rangeSelect() {
 /* ---------- routing ---------- */
 function parseRoute() {
   const h = location.hash.replace(/^#\/?/, '').split('/');
-  if (['words', 'cards', 'quiz', 'sort', 'review'].includes(h[0])) return { view: h[0] };
+  if (['words', 'cards', 'quiz', 'sort', 'review', 'class', 'task'].includes(h[0])) return { view: h[0] };
   if (h[0] === 'demos') return { view: 'demos', id: DEMOS.includes(h[1]) ? h[1] : DEMOS[0] };
   return { view: 'home' };
 }
@@ -79,11 +87,11 @@ window.addEventListener('hashchange', () => {
 function render() {
   applySettings(S.settings, htmlLang(L()));
   const v = S.route.view;
-  const body = { home: homeHTML, words: wordsHTML, cards: cardsHTML, quiz: quizHTML, review: quizHTML, sort: sortHTML, demos: demosHTML }[v]();
-  document.title = (v === 'home' ? '' : T('nav.' + v) + ' · ') + T('app.name');
-  app.innerHTML = headerHTML() + body + footerHTML();
+  const body = { home: homeHTML, words: wordsHTML, cards: cardsHTML, quiz: quizHTML, review: quizHTML, task: quizHTML, sort: sortHTML, demos: demosHTML, class: classHTML }[v]();
+  document.title = (v === 'home' ? '' : T(v === 'task' ? 'cls.task' : v === 'class' ? 'cls.title' : 'nav.' + v) + ' · ') + T('app.name');
+  app.innerHTML = headerHTML() + liveBanner() + body + footerHTML();
   if (v === 'demos') mountDemo(S.route.id);
-  if (v === 'quiz' || v === 'review') afterQuizRender();
+  if (v === 'quiz' || v === 'review' || v === 'task') afterQuizRender();
   if (v === 'words') { const s = document.getElementById('search'); if (s && S.query) { s.focus(); s.setSelectionRange(S.query.length, S.query.length); } }
 }
 function headerHTML() {
@@ -94,6 +102,7 @@ function headerHTML() {
     <nav class="topnav">
       ${a('', I.home, 'nav.home')}${a('words', I.list, 'nav.words')}${a('cards', I.cards, 'nav.cards')}${a('quiz', I.quiz, 'nav.quiz')}${a('sort', I.sort, 'nav.sort')}
       ${a('review', I.repeat, 'nav.review', due ? `<b class="badge">${due}</b>` : '')}${a('demos/' + DEMOS[0], I.play, 'nav.demos')}
+      ${S.cls && S.klass && S.klass.task ? a('task', I.flag, 'cls.task', taskDone() ? '' : '<b class="badge dot"></b>') : ''}
     </nav>
     <div class="topbar-right">
       ${langSelect(L(), T('nav.language'))}
@@ -138,6 +147,7 @@ function homeHTML() {
         <div class="glist">${groupsIn(S.settings.range).map(groupTag).join('')}</div>
       </div>
     </section>
+    ${classCardHTML()}
     <h2 class="sec-title">${H('home.modes')}</h2>
     <section class="modes">
       ${mode('words', I.list, 'nav.words', 'mode.words')}
@@ -161,6 +171,149 @@ function homeHTML() {
       <p class="muted small">${H('home.byGroupTip')}</p>
     </section>
   </main>`;
+}
+
+/* ---------- class (joined with a class code from the teacher) ----------
+ * The class row says what the assignment is ({range, mode, n, seed}) and whether the
+ * class is live (the teacher pressed "start"). While live, the assignment opens by itself. */
+const now = () => Date.now() + S.skew;
+const isLive = () => !!(S.klass && S.klass.live_until && Date.parse(S.klass.live_until) > now());
+const curTask = () => (S.cls && S.klass && S.klass.task && isRange(S.klass.task.range) ? S.klass.task : null);
+const taskDone = () => { const t = curTask(); return !!(t && Store.get('netw.tasks', {})[taskKey(t)]); };
+function forgetClass() {
+  S.cls = null; S.klass = null; Store.del('netw.class'); Store.del('netw.taskrun');
+  if (stopWatch) { stopWatch(); stopWatch = null; }
+}
+let stopWatch = null, pulse = null, wasLive = false;
+async function refreshClass() {
+  if (!S.cls) return;
+  try {
+    const row = await BE.getClass(S.cls.id);
+    if (!row) { forgetClass(); toast(T('cls.removed')); render(); return; }
+    const before = JSON.stringify(S.klass);
+    S.klass = row;
+    if (row.name !== S.cls.name) { S.cls.name = row.name; Store.set('netw.class', S.cls); }
+    const live = isLive();
+    /* the teacher has just started the class: open the assignment (once) */
+    if (live && !wasLive && curTask() && !taskDone() && S.route.view !== 'task') location.hash = '#/task';
+    wasLive = live;
+    if (JSON.stringify(S.klass) !== before && !(S.route.view === 'task' && S.quiz && S.quiz.task && S.quiz.state === 'q' && S.quiz.task.key === taskKey(curTask()))) render();
+    else if (JSON.stringify(S.klass) !== before) { const b = document.getElementById('live-banner'); if (b) b.outerHTML = liveBanner(); }
+  } catch (e) { /* offline: try again later */ }
+}
+async function bootClass() {
+  if (!BE.enabled || !S.cls) return;
+  BE.serverNow().then(d => { if (d) S.skew = d.getTime() - Date.now(); }).catch(() => {});
+  await refreshClass();
+  if (!S.cls) return;
+  BE.flushAttempts();
+  if (stopWatch) stopWatch();
+  BE.watchClass(S.cls.id, () => refreshClass()).then(f => { stopWatch = f; }).catch(() => {});
+  clearInterval(pulse);
+  pulse = setInterval(() => { if (document.visibilityState === 'visible') refreshClass(); }, 30000);
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.cls) { refreshClass(); BE.flushAttempts(); } });
+setInterval(() => { if (S.cls && wasLive && !isLive()) { wasLive = false; render(); } }, 15000);   // the live time ran out
+
+function liveBanner() {
+  if (!isLive() || S.route.view === 'task' || !curTask()) return '<div id="live-banner" hidden></div>';
+  return `<div id="live-banner" class="live-banner"><div class="wrap">${I.live}<span>${H('cls.liveNow')}</span><a class="btn btn-light btn-sm" href="#/task">${H('cls.backToTask')}${I.next}</a></div></div>`;
+}
+function taskInfo(t) {
+  return H('cls.taskInfo', { range: rangeLabel(t.range), mode: T('quiz.m.' + t.mode), n: t.n });
+}
+function classCardHTML() {
+  if (!BE.enabled) return '';
+  if (!S.cls) return `<a class="card cls-card join" href="#/class">${I.users}<span><b>${H('cls.join')}</b><span class="muted">${bi('cls.joinSub')}</span></span>${I.next}</a>`;
+  const t = curTask(), done = Store.get('netw.tasks', {})[taskKey(t)];
+  return `<section class="card cls-card">
+    <div class="cls-head">${I.users}<div><b>${esc(S.cls.name)}</b><span class="muted small">${H('cls.you', { nick: S.cls.nick })}</span></div>
+      ${isLive() ? `<span class="live-tag">${I.live}${H('cls.live')}</span>` : ''}<a class="linkbtn" href="#/class">${H('cls.details')}</a></div>
+    ${t ? `<div class="cls-task"><div><b>${H('cls.task')}</b><span class="muted">${taskInfo(t)}</span></div>
+      ${done ? `<span class="tag ok">${I.check}${H('cls.done', { a: done.score, b: done.n })}</span>` : ''}
+      <a class="btn ${done ? 'btn-ghost' : 'btn-primary'}" href="#/task">${I.flag}${H(done ? 'cls.taskAgain' : 'cls.taskStart')}</a></div>`
+      : `<p class="muted">${H('cls.noTask')}</p>`}
+  </section>`;
+}
+const pinInput = () => `<input name="pin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required>`;
+function classHTML() {
+  if (!BE.enabled) return `<main class="wrap narrow"><section class="card empty"><h1>${H('cls.title')}</h1><p class="muted">${H('cls.off')}</p></section></main>`;
+  if (S.cls) {
+    const t = curTask();
+    return `<main class="wrap narrow"><div class="page-head"><div><h1 class="page-title">${H('cls.title')}</h1></div></div>
+      ${classCardHTML()}
+      <section class="card panel"><p class="muted small">${bi('cls.recordTip')}</p>
+        <div class="row-btns left">${t ? '' : ''}<button class="btn btn-ghost" data-act="leaveClass">${H('cls.leave')}</button></div></section></main>`;
+  }
+  const J = S.join;
+  return `<main class="wrap narrow"><div class="page-head"><div><h1 class="page-title">${H(J.resume ? 'cls.resumeTitle' : 'cls.join')}</h1><p class="muted">${bi(J.resume ? 'cls.resumeSub' : 'cls.joinSub')}</p></div></div>
+    <form class="card panel form" id="join-form" autocomplete="off">
+      <label class="fld"><span>${H('cls.code')}</span><input name="code" value="${esc(J.code)}" maxlength="8" autocapitalize="characters" class="mono up" required></label>
+      <label class="fld"><span>${H('cls.nick')}</span><input name="nick" maxlength="30" value="${esc(J.nick || '')}" required><small class="muted">${H(J.resume ? 'cls.nickSame' : 'cls.nickTip')}</small></label>
+      <label class="fld"><span>${H('cls.pin')}</span>${pinInput()}<small class="muted">${H(J.resume ? 'cls.pinSame' : 'cls.pinTip')}</small></label>
+      ${J.err ? `<p class="err" role="alert">${J.err}</p>` : ''}
+      <div class="row-btns left"><button class="btn btn-primary" type="submit" ${J.busy ? 'disabled' : ''}>${H(J.resume ? 'cls.resumeBtn' : 'cls.joinBtn')}${I.next}</button>
+        <button class="linkbtn" type="button" data-act="joinMode">${H(J.resume ? 'cls.toJoin' : 'cls.toResume')}</button></div>
+    </form></main>`;
+}
+function joinError(e) {
+  const m = e && e.message;
+  if (m === 'pin_wrong') return H('err.pin_wrong', { n: e.left ?? '?' });
+  if (m === 'pin_locked') return H('err.pin_locked', { n: e.minutes ?? 10 });
+  if (['class_not_found', 'class_closed', 'nickname_taken', 'bad_pin', 'anon_disabled', 'not_found', 'no_pin', 'not_ready'].includes(m)) return H('err.' + m);
+  return H('err.net');
+}
+document.addEventListener('submit', async e => {
+  if (e.target.id !== 'join-form') return;
+  e.preventDefault();
+  const f = new FormData(e.target), J = S.join;
+  const code = String(f.get('code') || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), nick = String(f.get('nick') || '').trim(), pin = String(f.get('pin') || '');
+  J.code = code; J.nick = nick;
+  if (!/^\d{4}$/.test(pin)) { J.err = H('err.bad_pin'); render(); return; }
+  J.busy = true; J.err = ''; render();
+  try {
+    const row = J.resume ? await BE.resumeMember(code, nick, pin) : await BE.joinClass(code, nick, pin);
+    S.cls = { id: row.id, code: row.code, name: row.name, nick };
+    Store.set('netw.class', S.cls); Store.del('netw.taskrun');
+    J.busy = false; J.code = '';
+    if (location.search) history.replaceState(null, '', location.pathname + '#/');
+    location.hash = '#/';
+    await bootClass();
+    toast(T('cls.welcome', { name: row.name }));
+    render();
+  } catch (err) { J.busy = false; J.err = joinError(err); render(); }
+});
+
+/* the assignment: the same questions for everyone (seeded), resumed after a reload */
+function saveTaskRun() {
+  const Q = S.quiz;
+  if (!Q || !Q.task) return;
+  if (Q.state === 'done') {
+    const done = Store.get('netw.tasks', {});
+    done[Q.task.key] = { score: Q.score, n: Q.list.length, at: Date.now() };
+    Store.set('netw.tasks', done); Store.del('netw.taskrun');
+    return;
+  }
+  Store.set('netw.taskrun', { key: Q.task.key, i: Q.ans ? Q.i + 1 : Q.i, score: Q.score, missed: Q.missed });
+}
+function taskHTMLorStart() {
+  const t = curTask();
+  if (!S.cls || !t) {
+    return `<main class="wrap narrow"><section class="card empty"><div class="empty-icon">${I.flag}</div><h1>${H('cls.task')}</h1>
+      <p class="muted">${H(S.cls ? (S.klass ? 'cls.noTask' : 'cls.loading') : 'cls.joinFirst')}</p><div class="row-btns"><a class="btn btn-ghost" href="#/${S.cls ? '' : 'class'}">${H(S.cls ? 'nav.home' : 'cls.join')}</a></div></section></main>`;
+  }
+  const key = taskKey(t);
+  if (!S.quiz || !S.quiz.task || S.quiz.task.key !== key) {
+    const list = taskQuiz(t, seededRandom);
+    S.quiz = { task: { key, seed: t.seed }, mode: t.mode, list, i: 0, score: 0, ans: null, missed: [], state: 'q', spoken: -1 };
+    const run = Store.get('netw.taskrun', null);
+    if (run && run.key === key && run.i > 0) {
+      Object.assign(S.quiz, { i: Math.min(run.i, list.length - 1), score: run.score || 0, missed: run.missed || [] });
+      if (run.i >= list.length) S.quiz.state = 'done';
+    }
+    if (!list.length) return `<main class="wrap narrow"><section class="card empty"><h1>${H('cls.task')}</h1><p class="muted">${H('cls.noTask')}</p></section></main>`;
+  }
+  return '';
 }
 
 /* ---------- word list ---------- */
@@ -271,12 +424,14 @@ function scheduleAuto() {
   if (nb) { nb.style.setProperty('--auto', ms + 'ms'); nb.classList.add('auto-go'); }
   autoTimer = setTimeout(() => {
     autoTimer = null;
-    if (S.quiz === Q && Q.i === i && Q.ans && ['quiz', 'review'].includes(S.route.view)) actions.quizNext();
+    if (S.quiz === Q && Q.i === i && Q.ans && ['quiz', 'review', 'task'].includes(S.route.view)) actions.quizNext();
   }, ms);
 }
 const plainTerm = w => `<span class="term" lang="ja">${esc(w.term)}</span>`;
 function quizHTML() {
-  const review = S.route.view === 'review';
+  const review = S.route.view === 'review', task = S.route.view === 'task';
+  if (task) { const t = taskHTMLorStart(); if (t) return t; }
+  else if (S.quiz && S.quiz.task) S.quiz = null;
   if (review && !S.quiz) startQuiz(true);
   const Q = S.quiz;
   if (review && !Q.list.length) {
@@ -286,16 +441,17 @@ function quizHTML() {
       ${waiting ? `<p class="muted">${H('review.waiting', { n: waiting })}</p>` : ''}
       <div class="row-btns"><a class="btn btn-primary" href="#/quiz">${I.quiz}${H('home.startQuiz')}</a><a class="btn btn-ghost" href="#/">${H('nav.home')}</a></div></section></main>`;
   }
-  if (!Q || Q.review !== review || Q.state === 'start') return quizStartHTML();
+  if (!task && (!Q || Q.review !== review || Q.state === 'start')) return quizStartHTML();
   if (Q.state === 'done') {
     const n = Q.list.length, pct = Q.score / n, missed = [...new Set(Q.missed)];
     return `<main class="wrap narrow"><section class="card empty">
       <div class="empty-icon">${pct === 1 ? I.fire : I.check}</div>
-      <h1>${H(review ? 'review.finished' : pct === 1 ? 'quiz.perfect' : pct >= .7 ? 'quiz.good' : 'quiz.tryAgain')}</h1>
+      <h1>${H(task ? 'cls.taskFinished' : review ? 'review.finished' : pct === 1 ? 'quiz.perfect' : pct >= .7 ? 'quiz.good' : 'quiz.tryAgain')}</h1>
       <p class="big-score">${Q.score} / ${n}</p>
       ${missed.length ? `<div class="missed"><h2>${H('quiz.missed')}</h2><p class="muted small">${H('quiz.toReview')}</p>
         <ul>${missed.map(id => { const w = WORD_BY_ID[id]; return `<li><div class="term-row">${termHTML(w)}${speakBtn(w)}</div><div>${bi(`w.${id}.desc`)}</div></li>`; }).join('')}</ul></div>` : ''}
-      <div class="row-btns"><button class="btn btn-primary" data-act="quizStart" data-mode="${Q.mode || 'mix'}">${I.reset}${H('btn.again')}</button><button class="btn btn-ghost" data-act="quizMenu">${H('quiz.other')}</button></div></section></main>`;
+      <div class="row-btns">${task ? `<button class="btn btn-primary" data-act="taskRestart">${I.reset}${H('btn.again')}</button><a class="btn btn-ghost" href="#/">${H('nav.home')}</a>`
+        : `<button class="btn btn-primary" data-act="quizStart" data-mode="${Q.mode || 'mix'}">${I.reset}${H('btn.again')}</button><button class="btn btn-ghost" data-act="quizMenu">${H('quiz.other')}</button>`}</div></section></main>`;
   }
   const q = Q.list[Q.i], w = WORD_BY_ID[q.id], a = Q.ans, f = q.fact && FACT_BY_ID[q.fact];
   const box = {
@@ -304,7 +460,8 @@ function quizHTML() {
     d2t: () => `<div class="qbox"><p class="desc">${bi(`w.${w.id}.desc`)}</p></div>`,
     tip2t: () => `<div class="qbox scene">${I.bulb}<p class="desc">${bi(`w.${w.id}.tip`)}</p></div>`,
     e2t: () => `<div class="qbox center"><div class="big-en" lang="en">${esc(w.en)}</div></div>`,
-    listen: () => `<div class="qbox center"><button class="listen-big" data-act="speak" data-id="${w.id}" aria-label="${esc(T('btn.listen'))}">${I.sound}</button><p class="muted small">${H('quiz.tapListen')}</p></div>`,
+    listen: () => canSpeak ? `<div class="qbox center"><button class="listen-big" data-act="speak" data-id="${w.id}" aria-label="${esc(T('btn.listen'))}">${I.sound}</button><p class="muted small">${H('quiz.tapListen')}</p></div>`
+      : `<div class="qbox center"><div class="big-en alt" lang="en">${esc(w.en)}</div></div>`,   /* a class assignment on a device that cannot speak */
     t2d: () => `<div class="qbox center"><div class="big-term">${termHTML(w)}</div></div>`
   }[q.type]();
   const optBody = v => {
@@ -322,7 +479,7 @@ function quizHTML() {
   const ok = a === q.answer;
   const right = q.type === 'fact' ? choiceHTML(f.opts[0], T) : esc(w.term);
   return `<main class="wrap narrow">
-    <div class="qhead"><h1 class="page-title">${H(review ? 'review.title' : 'quiz.title')}</h1><div class="qhead-r">${autoNextBtn()}<span class="count">${Q.i + 1} / ${Q.list.length}</span></div></div>
+    <div class="qhead"><h1 class="page-title">${H(task ? 'cls.task' : review ? 'review.title' : 'quiz.title')}</h1><div class="qhead-r">${autoNextBtn()}<span class="count">${Q.i + 1} / ${Q.list.length}</span></div></div>
     <div class="bar"><i style="width:${(Q.i + (a ? 1 : 0)) / Q.list.length * 100}%"></i></div>
     <p class="prompt">${H('quiz.' + q.type)} ${q.type === 's2t' || q.type === 'fact' ? '' : groupTag(GROUP_BY_ID[w.group])}</p>
     ${box}
@@ -350,6 +507,10 @@ function answer(id) {
   Q.ans = id;
   if (ok) Q.score++; else Q.missed.push(q.id);
   recordAnswer(S.progress, q.id, ok, Q.review); save();
+  if (S.cls) {
+    BE.logAttempt({ class_id: S.cls.id, word: q.id, qid: qidOf(q), kind: Q.task ? 'task' : Q.review ? 'review' : 'quiz', seed: Q.task ? String(Q.task.seed).slice(0, 40) : null, pos: Q.task ? Q.i : null, choice: String(id).slice(0, 40), ok });
+    if (Q.task) saveTaskRun();
+  }
   render();
   const nb = document.getElementById('next-btn'); if (nb) nb.focus({ preventScroll: true });
   scheduleAuto();
@@ -424,7 +585,15 @@ const actions = {
   quizMenu() { clearAuto(); S.quiz = null; render(); },
   answer(el) { answer(el.dataset.id); },
   autoNext() { S.settings.autoNext = !S.settings.autoNext; saveSettings(S.settings); render(); scheduleAuto(); },
-  quizNext() { clearAuto(); const Q = S.quiz; if (Q.i < Q.list.length - 1) { Q.i++; Q.ans = null; } else Q.state = 'done'; render(); window.scrollTo(0, 0); },
+  quizNext() { clearAuto(); const Q = S.quiz; if (Q.i < Q.list.length - 1) { Q.i++; Q.ans = null; } else Q.state = 'done'; if (Q.task) saveTaskRun(); render(); window.scrollTo(0, 0); },
+  taskRestart() { clearAuto(); Store.del('netw.taskrun'); S.quiz = null; render(); window.scrollTo(0, 0); },
+  joinMode() { S.join.resume = !S.join.resume; S.join.err = ''; render(); },
+  leaveClass() {
+    if (!confirm(T('cls.leaveConfirm'))) return;
+    const id = S.cls.id;
+    BE.leaveClass(id).catch(() => {});
+    forgetClass(); render();
+  },
   sortStart() { S.sort = { list: makeSort(words().map(w => w.id), 10), i: 0, score: 0, ans: null, state: 'q' }; render(); },
   sortAnswer(el) {
     const R = S.sort; if (R.ans) return;
@@ -472,7 +641,7 @@ document.addEventListener('input', e => {
 document.addEventListener('keydown', e => {
   if (document.getElementById('modal') || e.target.closest('input, select, textarea')) return;
   const v = S.route.view;
-  if ((v === 'quiz' || v === 'review') && S.quiz && S.quiz.state === 'q' && !S.quiz.ans && /^[1-4]$/.test(e.key)) {
+  if ((v === 'quiz' || v === 'review' || v === 'task') && S.quiz && S.quiz.state === 'q' && !S.quiz.ans && /^[1-4]$/.test(e.key)) {
     const id = S.quiz.list[S.quiz.i].opts[+e.key - 1]; if (id) answer(id);
   }
   if (v === 'cards') {
@@ -508,6 +677,8 @@ function openSettings() {
 (async function start() {
   S.route = parseRoute();
   await Promise.all([loadLang('en'), loadLang(L()), S.settings.second ? loadLang(S.settings.second) : null]);
+  if (S.join.code && !S.cls) { S.route = { view: 'class' }; history.replaceState(null, '', location.pathname + '#/class'); }
   render();
+  if (S.cls) bootClass();
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
