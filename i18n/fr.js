@@ -1118,5 +1118,16 @@ export default {
   "ls.13.p4": "Laissez « hub » sélectionné, choisissez un expéditeur et un destinataire, puis envoyez. Observez la trame arriver aussi aux PC qui ne sont pas destinataires, et le nombre de trames livrées pour rien. Passez ensuite à « switch » et envoyez de la même façon pour voir la différence.",
   "ls.13.pt1": "Le concentrateur envoie le signal reçu vers tous les autres ports, sans regarder le destinataire.",
   "ls.13.pt2": "C'est un appareil de couche 1, comparable à un [[repeater:répéteur]] à plusieurs ports.",
-  "ls.13.pt3": "Tous les appareils d'un concentrateur forment un seul [[colldomain:domaine de collision]] : plus d'appareils, plus de collisions."
+  "ls.13.pt3": "Tous les appareils d'un concentrateur forment un seul [[colldomain:domaine de collision]] : plus d'appareils, plus de collisions.",
+  "words.view": "Affichage",
+  "words.viewTable": "Tableau",
+  "words.viewCards": "Cartes",
+  "words.order": "Ordre",
+  "words.byLesson": "Par leçon",
+  "words.byGroup": "Par groupe",
+  "words.byKana": "Ordre japonais (a-i-u-e-o)",
+  "words.print": "Imprimer",
+  "words.colTerm": "Terme",
+  "words.colMeaning": "Sens",
+  "words.colLesson": "Leçon"
 };

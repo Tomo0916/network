@@ -423,19 +423,50 @@ function matches(w, q) {
   const hay = [w.term, w.yomi, w.en, T(`w.${w.id}.desc`), T(`w.${w.id}.tip`)].join(' ').toLowerCase();
   return hay.includes(q.toLowerCase());
 }
+/** the words shown, split into sections in the chosen order: lesson (by chapter) · group · kana */
+function wordSections(ws) {
+  const order = S.settings.wordOrder || 'lesson';
+  if (order === 'kana') {
+    const key = w => (w.yomi || w.term).replace(/[（(].*$/, '');
+    return [{ title: '', words: [...ws].sort((a, b) => key(a).localeCompare(key(b), 'ja')) }];
+  }
+  if (order === 'group') return groupsIn(S.settings.range).map(g => ({ g, title: `${H('g.' + g.id)} <span class="layer">${H('layer.' + g.layer)}</span>`, words: ws.filter(w => w.group === g.id) }));
+  return CHAPTERS.map(c => ({ ch: c.n, title: `<span class="ch-no">${c.n}</span>${H('ch.' + c.n)}`,
+    words: ws.filter(w => w.lesson >= c.from && w.lesson <= c.to).sort((a, b) => a.lesson - b.lesson) }));
+}
+function wordRow(w, i) {
+  const k = !!S.progress.known[w.id];
+  return `<tr style="--gc:var(--g-${w.group})">
+    <td class="wt-no">${i}</td>
+    <td class="wt-term"><div class="term-row">${termHTML(w)}${speakBtn(w)}</div>${enName(w)}</td>
+    <td class="wt-desc"><button class="wt-open" data-act="termPop" data-id="${w.id}">${bi(`w.${w.id}.desc`)}</button></td>
+    <td class="wt-lsn">${hasPage(w.lesson) ? `<a href="#/lesson/${w.lesson}">${H('range.lesson', { n: w.lesson })}</a>` : `<span>${H('range.lesson', { n: w.lesson })}</span>`}</td>
+    <td class="wt-known"><button class="wt-chk ${k ? 'on' : ''}" data-act="toggleKnown" data-id="${w.id}" aria-pressed="${k}" title="${esc(T('cards.known'))}">${I.check}</button></td>
+  </tr>`;
+}
 function wordListHTML() {
   const ws = words().filter(w => matches(w, S.query));
   if (!ws.length) return `<p class="muted empty-line">${H('words.none')}</p>`;
-  return groupsIn(S.settings.range).map(g => {
-    const list = ws.filter(w => w.group === g.id);
-    if (!list.length) return '';
-    return `<section class="grp" style="--gc:var(--g-${g.id})"><h2>${H('g.' + g.id)} <span class="layer">${H('layer.' + g.layer)}</span></h2>
-      <div class="wgrid">${list.map(wordCard).join('')}</div></section>`;
-  }).join('');
+  const secs = wordSections(ws).filter(x => x.words.length);
+  if (S.settings.wordView === 'cards') return secs.map(x => `<section class="grp" style="--gc:${x.g ? `var(--g-${x.g.id})` : 'var(--accent)'}">${x.title ? `<h2>${x.title}</h2>` : ''}
+      <div class="wgrid">${x.words.map(wordCard).join('')}</div></section>`).join('');
+  let n = 0;
+  return `<table class="wtable">
+    <thead><tr><th class="wt-no">#</th><th>${H('words.colTerm')}</th><th>${H('words.colMeaning')}</th><th class="wt-lsn">${H('words.colLesson')}</th><th class="wt-known">${I.check}</th></tr></thead>
+    ${secs.map(x => `<tbody>${x.title ? `<tr class="wt-sec" style="--gc:${x.g ? `var(--g-${x.g.id})` : 'var(--accent)'}"><th colspan="5">${x.title} <span class="muted">(${x.words.length})</span></th></tr>` : ''}
+      ${x.words.map(w => wordRow(w, ++n)).join('')}</tbody>`).join('')}
+  </table>`;
 }
 function wordsHTML() {
+  const seg = (k, v, key, def) => `<label class="seg-i"><input type="radio" name="${k}" data-wset="${k}" value="${v}" ${(S.settings[k] || def) === v ? 'checked' : ''}><span>${H(key)}</span></label>`;
   return `<main class="wrap">${pageHead('nav.words')}
-    <label class="search">${I.search}<input id="search" type="search" value="${esc(S.query)}" placeholder="${esc(T('words.search'))}" aria-label="${esc(T('words.search'))}"></label>
+    <div class="wl-ctl">
+      <label class="search">${I.search}<input id="search" type="search" value="${esc(S.query)}" placeholder="${esc(T('words.search'))}" aria-label="${esc(T('words.search'))}"></label>
+      <div class="seg small-seg" role="group" aria-label="${esc(T('words.view'))}">${seg('wordView', 'table', 'words.viewTable', 'table')}${seg('wordView', 'cards', 'words.viewCards', 'table')}</div>
+      <div class="seg small-seg" role="group" aria-label="${esc(T('words.order'))}">${seg('wordOrder', 'lesson', 'words.byLesson', 'lesson')}${seg('wordOrder', 'group', 'words.byGroup', 'lesson')}${seg('wordOrder', 'kana', 'words.byKana', 'lesson')}</div>
+      <button class="btn btn-ghost btn-sm" data-act="printWords">${I.print}${H('words.print')}</button>
+    </div>
+    <p class="wl-print-head">${H('app.name')} — ${esc(rangeLabel(S.settings.range))}</p>
     <div id="wlist">${wordListHTML()}</div></main>`;
 }
 
@@ -737,6 +768,8 @@ const actions = {
   },
   cardsReset() { words().forEach(w => delete S.progress.known[w.id]); save(); S.cards.i = 0; render(); },
   termPop(el) { termPop(el.dataset.id); },
+  toggleKnown(el) { const id = el.dataset.id; if (S.progress.known[id]) delete S.progress.known[id]; else S.progress.known[id] = Date.now(); save(); const on = !!S.progress.known[id]; el.classList.toggle('on', on); el.setAttribute('aria-pressed', on); },
+  printWords() { window.print(); },
   goLesson(el) { closeModal(); location.hash = '#/lesson/' + el.dataset.n; },
   lessonQuiz(el) { S.settings.range = 'lesson-' + el.dataset.n; saveSettings(S.settings); S.quiz = null; location.hash = '#/quiz'; },
   quizStart(el) { startQuiz(S.route.view === 'review', el.dataset.mode || 'mix'); render(); },
@@ -783,6 +816,7 @@ document.addEventListener('change', e => {
     if (location.search) history.replaceState(null, '', location.pathname + location.hash);
     render(); return;
   }
+  if (el.dataset.wset) { S.settings[el.dataset.wset] = el.value; saveSettings(S.settings); document.getElementById('wlist').innerHTML = wordListHTML(); return; }
   if (el.matches('[data-act="demoSpeed"]')) { S.settings.demoSpeed = Number(el.value); saveSettings(S.settings); import('./demos/kit.js').then(k => k.setSpeed(S.settings.demoSpeed)); return; }
   if (el.matches('[data-act="quizN"]')) { S.settings.quizN = Number(el.value); saveSettings(S.settings); render(); return; }
   if (el.matches('[data-act="cfilter"]')) { S.cards.onlyNew = el.value === 'new'; S.cards.i = 0; S.cards.flipped = false; render(); return; }

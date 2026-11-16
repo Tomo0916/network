@@ -1117,5 +1117,16 @@ export default {
   "ls.13.p4": "「ハブ」のまま、送り元と宛先を選んで送ってみましょう。宛先ではないPCにも届く様子と、「むだに届いた数」に注目してください。次に「スイッチ」に切りかえて、同じように送ると違いがわかります。",
   "ls.13.pt1": "ハブは、受け取った信号をほかのすべてのポートへ送る。宛先は見ない。",
   "ls.13.pt2": "ハブはレイヤー1の機器。「ポートの多い[[repeater:リピーター]]」と考えられる。",
-  "ls.13.pt3": "ハブにつながる機器は全部で1つの[[colldomain:衝突ドメイン]]。台数が増えると衝突も増える。"
+  "ls.13.pt3": "ハブにつながる機器は全部で1つの[[colldomain:衝突ドメイン]]。台数が増えると衝突も増える。",
+  "words.view": "表示",
+  "words.viewTable": "一覧表",
+  "words.viewCards": "カード",
+  "words.order": "並べ方",
+  "words.byLesson": "教科書の回順",
+  "words.byGroup": "グループ順",
+  "words.byKana": "あいうえお順",
+  "words.print": "印刷",
+  "words.colTerm": "用語",
+  "words.colMeaning": "意味",
+  "words.colLesson": "回"
 };

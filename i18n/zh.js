@@ -1118,5 +1118,16 @@ export default {
   "ls.13.p4": "保持选择“hub”，选好发送方和目的地后发送。注意帧也到达了不是目的地的PC，以及“白白送达的数量”。然后切换到“switch”，同样发送，就能看出区别。",
   "ls.13.pt1": "集线器把收到的信号发往其他所有端口，不看目的地。",
   "ls.13.pt2": "集线器是第1层设备，可以看作“端口多的[[repeater:中继器]]”。",
-  "ls.13.pt3": "连在集线器上的设备构成一个[[colldomain:冲突域]]。台数越多，冲突越多。"
+  "ls.13.pt3": "连在集线器上的设备构成一个[[colldomain:冲突域]]。台数越多，冲突越多。",
+  "words.view": "显示",
+  "words.viewTable": "列表",
+  "words.viewCards": "卡片",
+  "words.order": "排序",
+  "words.byLesson": "按课",
+  "words.byGroup": "按组",
+  "words.byKana": "日语五十音顺",
+  "words.print": "打印",
+  "words.colTerm": "术语",
+  "words.colMeaning": "意思",
+  "words.colLesson": "课"
 };

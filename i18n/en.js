@@ -1118,5 +1118,16 @@ export default {
   "ls.13.p4": "Keep \"hub\" selected, choose a sender and a destination, and send. Watch the frame reach PCs that are not the destination, and look at the count of frames delivered for nothing. Then switch to \"switch\" and send the same way to see the difference.",
   "ls.13.pt1": "A hub sends a received signal out of every other port. It does not look at the destination.",
   "ls.13.pt2": "A hub is a Layer 1 device. You can think of it as a [[repeater:repeater]] with many ports.",
-  "ls.13.pt3": "All devices on a hub form one [[colldomain:collision domain]]. More devices means more collisions."
+  "ls.13.pt3": "All devices on a hub form one [[colldomain:collision domain]]. More devices means more collisions.",
+  "words.view": "View",
+  "words.viewTable": "Table",
+  "words.viewCards": "Cards",
+  "words.order": "Order",
+  "words.byLesson": "By lesson",
+  "words.byGroup": "By group",
+  "words.byKana": "Japanese a-i-u-e-o",
+  "words.print": "Print",
+  "words.colTerm": "Term",
+  "words.colMeaning": "Meaning",
+  "words.colLesson": "Lesson"
 };

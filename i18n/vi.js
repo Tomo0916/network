@@ -1118,5 +1118,16 @@ export default {
   "ls.13.p4": "Để nguyên \"hub\", chọn máy gửi và đích rồi gửi. Hãy để ý frame tới cả những PC không phải đích, và số frame bị gửi vô ích. Sau đó đổi sang \"switch\" và gửi giống vậy để thấy sự khác nhau.",
   "ls.13.pt1": "Hub gửi tín hiệu nhận được ra mọi cổng khác. Nó không xem đích.",
   "ls.13.pt2": "Hub là thiết bị tầng 1, có thể xem là [[repeater:bộ lặp]] nhiều cổng.",
-  "ls.13.pt3": "Mọi thiết bị nối vào hub tạo thành một [[colldomain:miền xung đột]]. Càng nhiều thiết bị, càng nhiều xung đột."
+  "ls.13.pt3": "Mọi thiết bị nối vào hub tạo thành một [[colldomain:miền xung đột]]. Càng nhiều thiết bị, càng nhiều xung đột.",
+  "words.view": "Hiển thị",
+  "words.viewTable": "Bảng",
+  "words.viewCards": "Thẻ",
+  "words.order": "Thứ tự",
+  "words.byLesson": "Theo bài",
+  "words.byGroup": "Theo nhóm",
+  "words.byKana": "Thứ tự tiếng Nhật (a-i-u-e-o)",
+  "words.print": "In",
+  "words.colTerm": "Thuật ngữ",
+  "words.colMeaning": "Nghĩa",
+  "words.colLesson": "Bài"
 };

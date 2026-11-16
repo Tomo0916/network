@@ -1118,5 +1118,16 @@ export default {
   "ls.13.p4": "Biarkan \"hub\" terpilih, pilih pengirim dan tujuan, lalu kirim. Perhatikan frame yang juga sampai ke PC yang bukan tujuan, dan jumlah frame yang terkirim sia-sia. Lalu ganti ke \"switch\" dan kirim dengan cara yang sama untuk melihat perbedaannya.",
   "ls.13.pt1": "Hub mengirim sinyal yang diterima ke semua port lain. Hub tidak melihat tujuan.",
   "ls.13.pt2": "Hub adalah perangkat Layer 1, bisa dianggap sebagai [[repeater:repeater]] dengan banyak port.",
-  "ls.13.pt3": "Semua perangkat pada hub membentuk satu [[colldomain:collision domain]]. Makin banyak perangkat, makin banyak tabrakan."
+  "ls.13.pt3": "Semua perangkat pada hub membentuk satu [[colldomain:collision domain]]. Makin banyak perangkat, makin banyak tabrakan.",
+  "words.view": "Tampilan",
+  "words.viewTable": "Tabel",
+  "words.viewCards": "Kartu",
+  "words.order": "Urutan",
+  "words.byLesson": "Per pelajaran",
+  "words.byGroup": "Per kelompok",
+  "words.byKana": "Urutan Jepang (a-i-u-e-o)",
+  "words.print": "Cetak",
+  "words.colTerm": "Istilah",
+  "words.colMeaning": "Arti",
+  "words.colLesson": "Pelajaran"
 };
