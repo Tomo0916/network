@@ -310,7 +310,7 @@ export default {
   "quiz.count": "問題数",
   "quiz.other": "ほかのクイズ",
   "quiz.m.mix": "ミックス",
-  "quiz.m.mixSub": "説明・英語・たとえ・場面・数字・聞き取りの問題がまざって出ます。",
+  "quiz.m.mixSub": "説明・たとえ・場面・数字の問題がまざって出ます。",
   "quiz.m.scene": "場面問題",
   "quiz.m.sceneSub": "「こんなとき、どの用語？」に答えます。",
   "quiz.m.fact": "数字と順番",

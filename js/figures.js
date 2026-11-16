@@ -387,3 +387,249 @@ Object.assign(FIGURES, {
     </svg>`;
   }
 });
+
+/* ---------- chapter 3 (lessons 19–27) ---------- */
+const bin8 = n => n.toString(2).padStart(8, '0');
+const curve = (d, cls = '') => `<path class="flow thin ${cls}" d="${d}" fill="none" marker-end="url(#ah)"/>`;
+Object.assign(FIGURES, {
+  /* L19: LANs joined by routers */
+  l3Join(T) {
+    const zone = (x, w, n) => `<rect class="fzone" x="${x}" y="30" width="${w}" height="132" rx="14"/>${txt(x + w / 2, 22, 'LAN ' + n, 'small mono b')}
+      ${box(x + w / 2 - 22, 46, 44, 26, 'SW', 'dev')}${line(x + w / 2 - 10, 72, x + 30, 108)}${line(x + w / 2 + 10, 72, x + w - 30, 108)}${pcIco(x + 30, 120)}${pcIco(x + w - 30, 120)}`;
+    return `${svgOpen(480, 210, T('fg.l3JoinAlt'))}
+      ${zone(8, 130, 1)}${zone(175, 130, 2)}${zone(342, 130, 3)}
+      ${line(95, 59, 220, 59)}${line(262, 59, 386, 59)}
+      ${box(138, 44, 37, 30, 'R', 'dev')}${box(305, 44, 37, 30, 'R', 'dev')}
+      ${brace(8, 472, 172, term('internetwork')).replace('<text', '<text lang="ja"')}
+    </svg>`;
+  },
+  /* L20: IP works on top of many kinds of layer 2 */
+  ipOver(T) {
+    return `${svgOpen(460, 180, T('fg.ipOverAlt'))}
+      ${txt(30, 42, 'L4', 'small mono b')}${txt(30, 92, 'L3', 'small mono b')}${txt(30, 142, 'L2', 'small mono b')}
+      ${box(56, 22, 390, 32, 'TCP / UDP', 'dim')}
+      ${box(56, 72, 390, 34, 'IP', 'hl')}
+      ${box(56, 124, 124, 34, term('ethernet'), '')}${box(189, 124, 124, 34, T('fg.wifi'), '')}${box(322, 124, 124, 34, T('fg.otherL2'), 'dim')}
+    </svg>`;
+  },
+  /* L20: an IP packet (HTML boxes so the labels wrap) */
+  ipPacket(T) {
+    const cell = (cls, label, sub, grow) => `<div class="hf-cell ${cls}" style="flex-grow:${grow}"><b>${escAttr(label)}</b><span>${escAttr(sub)}</span></div>`;
+    return `<div class="hframe" role="img" aria-label="${escAttr(T('fg.ipPacketAlt'))}">
+      <div class="hf-group" style="flex-grow:18"><div class="hf-row">${cell('c1', 'TTL', '64', 3)}${cell('c1', T('fg.proto'), 'TCP', 4)}${cell('c1', T('fg.srcIp'), '192.168.1.10', 6)}${cell('c1', T('fg.dstIp'), '203.0.113.5', 6)}</div>
+        <div class="hf-brace">${escAttr(T('fg.ipHeader'))}</div></div>
+      ${cell('c2', T('fg.data'), '', 8)}
+    </div>`;
+  },
+  /* L20: the packet stays, the frame is made again after each router */
+  pktInFrame(T) {
+    const fr = (x, mac) => cells(x, 96, 46, [{ w: 52, label: 'MAC', sub: mac, cls: 'c1' }, { w: 92, label: 'IP', sub: 'A → B', cls: 'c2' }, { w: 40, label: 'FCS', cls: 'c3' }]);
+    return `${svgOpen(470, 200, T('fg.pktInFrameAlt'))}
+      ${pcIco(36, 40, 'A')}${line(56, 40, 214, 40)}${box(214, 25, 42, 30, 'R', 'dev')}${line(256, 40, 414, 40)}${pcIco(434, 40, 'B')}
+      ${fr(28, 'A → R')}${fr(258, 'R → B')}
+      ${txt(120, 162, T('fg.frameN', { n: 1 }), 'small b')}${txt(350, 162, T('fg.frameN', { n: 2 }), 'small b')}
+      ${arrow(170, 82, 300, 82)}${txt(235, 190, T('fg.samePkt'), 'small b accent')}
+    </svg>`;
+  },
+  /* L21: dotted decimal and the 32 bits */
+  dotted(T) {
+    const n = [192, 168, 1, 10];
+    return `${svgOpen(470, 196, T('fg.dottedAlt'))}
+      ${n.map((v, i) => txt(80 + i * 104, 40, String(v), 'big mono')).join('')}${[0, 1, 2].map(i => txt(132 + i * 104, 40, '.', 'big mono')).join('')}
+      ${n.map((v, i) => arrow(80 + i * 104, 50, 80 + i * 104, 70)).join('')}
+      ${cells(30, 76, 40, n.map((v, i) => ({ w: 100, label: bin8(v), cls: (i % 2 ? 'c3' : 'c1') + ' bin' })))}
+      ${brace(30, 130, 122, T('fg.bitsN', { n: 8 }))}${brace(30, 430, 154, T('fg.bits32'))}
+    </svg>`;
+  },
+  /* L21: network part and host part */
+  netHost(T) {
+    const zone = (x, net) => `<rect class="fzone" x="${x}" y="110" width="200" height="96" rx="14"/>${txt(x + 100, 132, net + 'x', 'small mono b')}
+      ${[0, 1, 2].map(i => pcIco(x + 40 + i * 60, 160) + txt(x + 40 + i * 60, 194, '.' + (i + 1), 'small mono')).join('')}`;
+    return `${svgOpen(470, 214, T('fg.netHostAlt'))}
+      ${cells(95, 14, 40, [{ w: 190, label: '192.168.1', cls: 'c1 mono' }, { w: 90, label: '10', cls: 'c3 mono' }])}
+      ${brace(95, 285, 60, term('netpart')).replace('<text', '<text lang="ja"')}${brace(285, 375, 60, term('hostpart')).replace('<text', '<text lang="ja"')}
+      ${zone(10, '192.168.1.')}${zone(260, '192.168.2.')}${box(213, 140, 44, 30, 'R', 'dev')}
+    </svg>`;
+  },
+  /* L22: classes A, B, C */
+  classes(T) {
+    const rows = [['A', 8, '1 – 126'], ['B', 16, '128 – 191'], ['C', 24, '192 – 223']];
+    const W = 290, x0 = 74;
+    return `${svgOpen(470, 204, T('fg.classesAlt'))}
+      ${txt(x0 + W / 2, 18, T('fg.bits32'), 'small')}${txt(420, 18, T('fg.firstNum'), 'small b')}
+      ${rows.map(([c, nb, r], i) => { const y = 30 + i * 52, w = W * nb / 32;
+        return `${txt(34, y + 24, T('fg.classX', { x: c }), 'b')}${cells(x0, y, 38, [{ w, label: T('fg.bitsN', { n: nb }), cls: 'c1' }, { w: W - w, label: T('fg.bitsN', { n: 32 - nb }), cls: 'c3' }])}${txt(420, y + 24, r, 'mono')}`; }).join('')}
+      <rect class="fcellbg c1" x="${x0}" y="186" width="12" height="10"/>${jt(x0 + 18, 195, term('netpart'), 'small', 'start')}
+      <rect class="fcellbg c3" x="${x0 + 140}" y="186" width="12" height="10"/>${jt(x0 + 158, 195, term('hostpart'), 'small', 'start')}
+    </svg>`;
+  },
+  /* L22: network address, host addresses, broadcast address */
+  specialAddr(T) {
+    return `${svgOpen(470, 150, T('fg.specialAddrAlt'))}
+      ${txt(235, 22, '192.168.1. ___', 'mono b')}
+      ${cells(20, 36, 44, [{ w: 90, label: '.0', sub: '00000000', cls: 'c1 mono' }, { w: 250, label: '.1 … .254', cls: 'c2 mono' }, { w: 90, label: '.255', sub: '11111111', cls: 'c3 mono' }])}
+      ${jt(65, 104, term('netaddr'), 'small b')}${txt(195, 104, T('fg.forHosts', { n: 254 }), 'small b accent')}${jt(385, 104, term('bcastaddr'), 'small b')}
+      ${txt(65, 124, T('fg.thisNet'), 'small')}${txt(385, 124, T('fg.toAll'), 'small')}
+    </svg>`;
+  },
+  /* L22: loopback */
+  loopbackFig(T) {
+    return `${svgOpen(470, 200, T('fg.loopbackAlt'))}
+      <rect class="fpanel" x="60" y="14" width="230" height="172" rx="14"/>${txt(76, 36, 'PC', 'small mono b', 'start')}
+      ${box(110, 44, 130, 34, T('fg.app'), 'hl')}${box(110, 130, 130, 34, 'TCP/IP', '')}
+      ${curve('M140 80 C 120 100, 120 110, 140 128')}${curve('M210 128 C 230 110, 230 100, 210 80')}
+      ${txt(100, 108, '127.0.0.1', 'small mono b accent', 'end')}
+      ${line(290, 147, 400, 147, 'dash')}${txt(345, 140, '×', 'big bad')}${txt(420, 151, 'LAN', 'small mono b')}${txt(345, 176, T('fg.notOut'), 'small')}
+    </svg>`;
+  },
+  /* L23: one big network split into subnets */
+  subnetSplit(T) {
+    const subs = ['172.16.1.0', '172.16.2.0', '172.16.3.0'];
+    return `${svgOpen(470, 200, T('fg.subnetSplitAlt'))}
+      <rect class="fzone" x="10" y="40" width="150" height="120" rx="14"/>${txt(85, 92, '172.16.0.0', 'mono b')}${txt(85, 114, T('fg.classX', { x: 'B' }), 'small')}
+      ${subs.map((s, i) => { const y = 14 + i * 60; return `${arrow(164, 100, 252, y + 24)}<rect class="fzone" x="256" y="${y}" width="200" height="48" rx="10"/>${txt(356, y + 22, s, 'mono b small')}${txt(356, y + 40, T('fg.subnetN', { n: i + 1 }), 'small')}`; }).join('')}
+      ${txt(356, 196, '…', 'b')}
+    </svg>`;
+  },
+  /* L23: address and mask, bit by bit */
+  maskBits(T) {
+    const ip = [192, 168, 1, 10], mk = [255, 255, 255, 0];
+    const row = (y, v) => cells(70, y, 34, v.map((n, i) => ({ w: 96, label: bin8(n), cls: (n === 0 || (v === mk ? false : i === 3) ? 'c3' : 'c1') + ' bin' })));
+    return `${svgOpen(470, 176, T('fg.maskBitsAlt'))}
+      ${txt(62, 36, 'IP', 'small b', 'end')}${row(14, ip)}
+      ${txt(62, 80, T('fg.mask'), 'small b', 'end')}${row(58, mk)}
+      ${mk.map((n, i) => txt(118 + i * 96, 110, String(n), 'small mono')).join('')}
+      ${brace(70, 358, 120, term('netpart')).replace('<text', '<text lang="ja"')}${brace(358, 454, 120, term('hostpart')).replace('<text', '<text lang="ja"')}
+    </svg>`;
+  },
+  /* L23: AND gives the network address */
+  andCalc(T) {
+    const rows = [['192.168.1.130', 130, 'IP'], ['255.255.255.192', 192, T('fg.mask')], ['192.168.1.128', 128, T('fg.netAddrS')]];
+    const bits = (y, v, res) => cells(250, y, 30, [...bin8(v)].map(b => ({ w: 25, label: b, cls: (b === '1' ? (res ? 'c2' : 'c1') : 'c0') + ' bit' })));
+    return `${svgOpen(470, 170, T('fg.andCalcAlt'))}
+      ${rows.map(([d, v, l], i) => { const y = 14 + i * 48 + (i === 2 ? 10 : 0); return `${txt(8, y + 20, l, 'small b', 'start')}${txt(236, y + 20, d, 'mono', 'end')}${bits(y, v, i === 2)}`; }).join('')}
+      ${line(80, 104, 452, 104)}${txt(235, 116, 'AND', 'small b accent')}
+      ${txt(350, 168, T('fg.andRule'), 'small')}
+    </svg>`;
+  },
+  /* L24: classes waste addresses */
+  classWaste(T) {
+    return `${svgOpen(470, 190, T('fg.classWasteAlt'))}
+      ${txt(10, 22, T('fg.need', { n: 500 }), 'b', 'start')}
+      ${txt(10, 62, T('fg.classX', { x: 'C' }), 'small b', 'start')}
+      <rect class="fcellbg c3" x="90" y="44" width="127" height="28" rx="4"/>${txt(154, 63, '254', 'small mono b')}
+      <rect x="90" y="44" width="250" height="28" rx="4" fill="none" class="fq"/>${txt(350, 63, '× ' + T('fg.tooFew'), 'small b bad', 'start')}
+      ${txt(10, 122, T('fg.classX', { x: 'B' }), 'small b', 'start')}
+      <rect class="fcellbg c3" x="90" y="104" width="10" height="28" rx="2"/><rect x="100" y="104" width="360" height="28" rx="4" class="fq"/>
+      ${txt(280, 123, T('fg.wasted', { n: '65,034' }), 'small b bad')}
+      ${txt(95, 152, '500', 'small mono b', 'start')}${txt(460, 152, '65,534', 'small mono', 'end')}
+    </svg>`;
+  },
+  /* L24: /26 */
+  prefixFig(T) {
+    const bw = 12, x0 = 43;
+    return `${svgOpen(470, 186, T('fg.prefixAlt'))}
+      ${txt(235, 24, '192.168.1.0/26', 'big mono')}
+      ${cells(x0, 38, 28, [...Array(32)].map((_, i) => ({ w: bw, label: i < 26 ? '1' : '0', cls: (i < 26 ? 'c1' : 'c3') + ' bit tiny' })))}
+      ${brace(x0, x0 + 26 * bw, 72, T('fg.bitsN', { n: 26 }))}${brace(x0 + 26 * bw, x0 + 32 * bw, 72, T('fg.bitsN', { n: 6 }))}
+      ${txt(20, 136, T('fg.mask') + '  255.255.255.192', 'mono small b', 'start')}
+      ${txt(20, 162, T('fg.hostsN', { n: 62 }) + '   (2⁶ − 2)', 'small b accent', 'start')}
+    </svg>`;
+  },
+  /* L24: four /24 networks as one /22 */
+  aggregate(T) {
+    return `${svgOpen(470, 200, T('fg.aggregateAlt'))}
+      ${[0, 1, 2, 3].map(i => box(10, 14 + i * 42, 170, 32, `192.168.${i}.0/24`, 'mono-ok')).join('')}
+      ${[0, 1, 2, 3].map(i => line(180, 30 + i * 42, 220, 30 + i * 42)).join('')}${line(220, 30, 220, 156)}${arrow(220, 93, 270, 93)}
+      ${box(274, 74, 186, 40, '192.168.0.0/22', 'hl mono-ok')}
+      ${txt(95, 196, T('fg.routesN', { n: 4 }), 'small b')}${txt(367, 140, T('fg.routesN', { n: 1 }), 'small b accent')}
+    </svg>`;
+  },
+  /* L25: what DHCP gives */
+  dhcpItems(T) {
+    const items = [term('ipaddress'), term('subnetmask'), term('gateway'), T('fg.dnsServer')];
+    return `${svgOpen(470, 200, T('fg.dhcpItemsAlt'))}
+      ${box(10, 76, 96, 48, 'DHCP', 'dev', '')}${txt(58, 142, T('fg.server'), 'small b')}
+      ${items.map((l, i) => box(140, 10 + i * 46, 200, 38, l, 'hl')).join('')}
+      ${arrow(106, 100, 136, 100)}${arrow(344, 100, 394, 100)}${pcIco(430, 100, 'PC')}
+    </svg>`;
+  },
+  /* L25: the four messages */
+  dhcpFlow(T) {
+    const m = [['DISCOVER', 'fg.dhcpD', 1], ['OFFER', 'fg.dhcpO', 0], ['REQUEST', 'fg.dhcpR', 1], ['ACK', 'fg.dhcpA', 0]];
+    return `${svgOpen(470, 310, T('fg.dhcpFlowAlt'))}
+      ${pcIco(70, 28, '')}${box(358, 12, 84, 32, 'DHCP', 'dev')}
+      ${line(70, 46, 70, 300, 'dash')}${line(400, 46, 400, 300, 'dash')}
+      ${m.map(([k, l, right], i) => { const y = 92 + i * 62;
+        return `${right ? arrow(76, y, 394, y) : arrow(394, y, 76, y)}${txt(235, y - 10, `${'①②③④'[i]} ${k}`, 'small mono b')}${txt(235, y + 20, T(l), 'small')}`; }).join('')}
+      ${txt(392, 72, T('fg.bcast'), 'small b accent', 'end')}
+    </svg>`;
+  },
+  /* L25: the lease */
+  lease(T) {
+    return `${svgOpen(470, 150, T('fg.leaseAlt'))}
+      <rect class="fcellbg c2" x="30" y="40" width="300" height="30" rx="6"/>
+      <rect class="fq" x="180" y="84" width="270" height="22" rx="6" style="fill-opacity:.2;stroke:var(--accent)"/>
+      ${line(30, 30, 30, 80)}${txt(30, 24, T('fg.borrow'), 'small b')}
+      ${line(330, 30, 330, 80)}${txt(330, 24, T('fg.expire'), 'small b')}
+      ${arrow(180, 74, 180, 92)}${txt(180, 126, T('fg.renew'), 'small b accent')}
+      ${txt(180, 61, T('fg.leaseTime'), 'small b')}${txt(315, 100, T('fg.extended'), 'small')}
+    </svg>`;
+  },
+  /* L26: the destination MAC is unknown */
+  arpNeed(T) {
+    return `${svgOpen(470, 150, T('fg.arpNeedAlt'))}
+      ${cells(10, 30, 54, [{ w: 96, label: '?', sub: T('fg.dstMacS'), cls: 'c1 q' }, { w: 96, label: '00:1A:…', sub: T('fg.srcMacS'), cls: 'c1' }, { w: 200, label: 'IP', sub: '→ 192.168.1.20', cls: 'c2' }, { w: 50, label: 'FCS', cls: 'c3' }])}
+      ${txt(58, 110, T('fg.unknownMac'), 'small b bad')}${txt(306, 110, T('fg.knownIp'), 'small b ok')}
+    </svg>`;
+  },
+  /* L26: request to everyone, reply from one */
+  arpFlow(T) {
+    const panel = (x, rep) => { const xs = [x + 30, x + 110, x + 190];
+      return `<rect class="fpanel" x="${x}" y="40" width="220" height="164" rx="12"/>
+        ${xs.map((cx, i) => (rep ? (i === 1 ? arrow(cx, 140, x + 112, 96, '') : '') : line(x + 110, 84, cx, 136, 'hot')) + `<circle class="fdot ${rep ? (i === 1 ? 'on' : '') : 'on'}" cx="${cx}" cy="150" r="12"/>${txt(cx, 154, i === 1 ? 'B' : i ? 'D' : 'C', 'small b')}`).join('')}
+        <circle class="fdot src" cx="${x + 110}" cy="72" r="13"/>${txt(x + 110, 77, 'A', 'small b inv')}
+        ${txt(x + 110, 188, T(rep ? 'fg.arpRep' : 'fg.arpReq') + ' · ' + T(rep ? 'fg.ucast' : 'fg.bcast'), 'small b')}`; };
+    return `${svgOpen(460, 212, T('fg.arpFlowAlt'))}${panel(4, false)}${panel(236, true)}
+      ${txt(114, 24, T('fg.whoHas', { ip: '192.168.1.20' }), 'small b accent')}${txt(346, 24, T('fg.iAm', { mac: '00:1A:2B:3C:4D:5E' }), 'small b ok')}</svg>`;
+  },
+  /* L26: the ARP table */
+  arpTableFig(T) {
+    const rows = [['192.168.1.1', '00:11:22:33:44:01'], ['192.168.1.20', '00:1A:2B:3C:4D:5E'], ['192.168.1.31', '00:1A:2B:9F:01:7C']];
+    return `${svgOpen(470, 170, T('fg.arpTableAlt'))}
+      ${cells(40, 10, 32, [{ w: 160, label: T('fg.ipAddrS'), cls: 'c2' }, { w: 230, label: T('fg.macAddrS'), cls: 'c1' }])}
+      ${rows.map(([a, b], i) => `<g class="ftable"><rect x="40" y="${46 + i * 36}" width="390" height="32"/></g>${txt(120, 67 + i * 36, a, 'small mono')}${txt(315, 67 + i * 36, b, 'small mono')}`).join('')}
+      ${txt(235, 164, T('fg.forgetLater'), 'small')}
+    </svg>`;
+  },
+  /* L27: ask the DNS server */
+  dnsAsk(T) {
+    return `${svgOpen(470, 210, T('fg.dnsAskAlt'))}
+      ${pcIco(50, 104, 'PC')}${box(340, 20, 120, 40, 'DNS', 'dev')}${box(340, 150, 120, 40, 'Web', 'dev')}
+      ${arrow(78, 86, 334, 36)}${arrow(334, 52, 82, 100)}${arrow(78, 118, 334, 168)}
+      ${txt(196, 40, '① www.example.com ?', 'small mono b')}${txt(220, 96, '② 203.0.113.10', 'small mono b ok')}${txt(196, 168, '③ ' + T('fg.connect'), 'small b')}
+      ${txt(400, 80, T('fg.dnsServer'), 'small')}${txt(400, 206, '203.0.113.10', 'small mono')}
+    </svg>`;
+  },
+  /* L27: the tree of names */
+  domainTree(T) {
+    const N = { root: [150, 26, '.', 1], jp: [70, 86, 'jp', 1], com: [150, 86, 'com'], org: [230, 86, 'org'], co: [40, 146, 'co', 1], ac: [110, 146, 'ac'], ex: [40, 206, 'example', 1], www: [40, 262, 'www', 1] };
+    const E = [['root', 'jp'], ['root', 'com'], ['root', 'org'], ['jp', 'co'], ['jp', 'ac'], ['co', 'ex'], ['ex', 'www']];
+    return `${svgOpen(470, 290, T('fg.domainTreeAlt'))}
+      ${E.map(([a, b]) => line(N[a][0], N[a][1] + 14, N[b][0], N[b][1] - 14, N[a][3] && N[b][3] ? 'hot' : '')).join('')}
+      ${Object.entries(N).map(([k, [x, y, l, on]]) => box(x - (k === 'ex' ? 36 : 26), y - 14, k === 'ex' ? 72 : 52, 28, l, on ? 'hl mono-ok' : 'dim mono-ok')).join('')}
+      ${txt(200, 26, T('fg.root'), 'small', 'start')}
+      ${txt(370, 150, 'www.example.co.jp', 'mono b')}${arrow(440, 172, 300, 172)}${txt(370, 196, T('fg.upper'), 'small b accent')}
+    </svg>`;
+  },
+  /* L27: the DNS server asks root, jp, example.co.jp */
+  dnsResolve(T) {
+    const S = [['.', 'fg.toJp'], ['jp', 'fg.toEx'], ['example.co.jp', '203.0.113.10']];
+    return `${svgOpen(470, 236, T('fg.dnsResolveAlt'))}
+      ${pcIco(34, 118, 'PC')}${arrow(56, 116, 104, 116)}
+      ${box(108, 96, 96, 40, 'DNS', 'dev')}${txt(156, 154, T('fg.cacheDns'), 'small')}
+      ${S.map(([n, a], i) => { const y = 14 + i * 76;
+        return `${arrow(204, 112, 290, y + 18)}${txt([236, 250, 236][i], [62, 106, 172][i], '①②③'[i], 'small b accent')}${box(294, y, 168, 34, n, 'mono-ok hl')}${txt(378, y + 52, a.startsWith('fg.') ? T(a) : a, 'small ' + (i === 2 ? 'mono b ok' : ''))}`; }).join('')}
+    </svg>`;
+  }
+});

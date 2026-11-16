@@ -71,6 +71,69 @@ export const LESSON_PAGES = {
     { h: 'h2' }, { p: 'p2' }, { fig: 'wires', cap: 'cap2' },
     { h: 'h3' }, { p: 'p3' }, { fig: 'bufferQ', cap: 'cap3' },
     { points: 3 }
+  ],
+  19: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'l3Join', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'l2Scope', cap: 'cap2' },
+    { h: 'h3' }, { p: 'p3' }, { demo: 'route' },
+    { points: 3 }
+  ],
+  20: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'ipOver', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'ipPacket', cap: 'cap2' },
+    { h: 'h3' }, { p: 'p3' }, { fig: 'pktInFrame', cap: 'cap3' },
+    { points: 3 }
+  ],
+  21: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'dotted', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'netHost', cap: 'cap2' },
+    { h: 'h3' }, { p: 'p3' }, { demo: 'subnet' },
+    { points: 3 }
+  ],
+  22: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'classes', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'specialAddr', cap: 'cap2' },
+    { h: 'h3' }, { p: 'p3' }, { fig: 'loopbackFig', cap: 'cap3' },
+    { points: 3 }
+  ],
+  23: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'subnetSplit', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'maskBits', cap: 'cap2' },
+    { h: 'h3' }, { p: 'p3' }, { fig: 'andCalc', cap: 'cap3' }, { demo: 'subnet' },
+    { points: 3 }
+  ],
+  24: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'classWaste', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'prefixFig', cap: 'cap2' },
+    { h: 'h3' }, { p: 'p3' }, { fig: 'aggregate', cap: 'cap3' },
+    { points: 3 }
+  ],
+  25: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'dhcpItems', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'dhcpFlow', cap: 'cap2' },
+    { h: 'h3' }, { p: 'p3' }, { fig: 'lease', cap: 'cap3' },
+    { points: 3 }
+  ],
+  26: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'arpNeed', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'arpFlow', cap: 'cap2' },
+    { h: 'h3' }, { p: 'p3' }, { fig: 'arpTableFig', cap: 'cap3' }, { demo: 'arp' },
+    { points: 3 }
+  ],
+  27: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'dnsAsk', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'domainTree', cap: 'cap2' },
+    { h: 'h3' }, { p: 'p3' }, { fig: 'dnsResolve', cap: 'cap3' },
+    { points: 3 }
   ]
 };
 export const hasPage = n => !!LESSON_PAGES[n];

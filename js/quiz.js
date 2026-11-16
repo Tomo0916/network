@@ -56,7 +56,11 @@ export function distractors(w, n = 3, rnd = Math.random) {
 }
 
 /* ---------- one question ---------- */
-export const WORD_TYPES = ['d2t', 't2d', 'e2t', 'tip2t', 'listen'];
+export const WORD_TYPES = ['d2t', 't2d', 'tip2t', 'listen'];
+/* "English name → term" (e2t) is no longer asked (2026-11-16). Class tests made before that keep it,
+ * so that their questions (made again from the seed) stay the same. */
+const OLD_TYPES = ['d2t', 't2d', 'e2t', 'tip2t', 'listen'];   /* the old order: keep it */
+export const NO_E2T_FROM = Date.parse('2026-11-16T04:57:00Z');
 export function makeQuestion(id, type, rnd = Math.random) {
   type = type || shuffle(['d2t', 't2d'], rnd)[0];
   return { id, type, opts: shuffle([id, ...distractors(WORD_BY_ID[id], 3, rnd)], rnd), answer: id };
@@ -84,7 +88,7 @@ export function questionPool(ids, mode = 'mix', opts = {}) {
   if (mode === 'scene') return scenesIn(ids).map(s => ({ id: s.word, make: () => sceneQuestion(s.id, rnd) }));
   if (mode === 'fact') return factsIn(ids).map(f => ({ id: f.word, make: () => factQuestion(f.id, rnd) }));
   if (mode === 'listen') return canListen ? ids.map(id => ({ id, make: () => makeQuestion(id, 'listen', rnd) })) : [];
-  const types = WORD_TYPES.filter(t => t !== 'listen' || canListen);
+  const types = (opts.e2t ? OLD_TYPES : WORD_TYPES).filter(t => t !== 'listen' || canListen);
   return [
     ...ids.flatMap(id => types.map(t => ({ id, make: () => makeQuestion(id, t, rnd) }))),
     ...scenesIn(ids).map(s => ({ id: s.word, make: () => sceneQuestion(s.id, rnd) })),
@@ -123,7 +127,9 @@ export function taskQuiz(task, seededRandom) {
   if (!task || !isRange(task.range)) return [];
   const ids = wordsIn(task.range).map(w => w.id);
   const mode = TASK_MODES.includes(task.mode) ? task.mode : 'mix';
-  return makeQuiz(ids, Math.max(1, Math.min(40, +task.n || 10)), mode, { listen: mode === 'listen', rnd: seededRandom(`${task.seed}|${task.range}|${mode}`) });
+  /* old assignment (no v) or quick test from before NO_E2T_FROM: the questions it had then */
+  const e2t = task.v !== 2 && !(task.at && Date.parse(task.at) >= NO_E2T_FROM);
+  return makeQuiz(ids, Math.max(1, Math.min(40, +task.n || 10)), mode, { listen: mode === 'listen', e2t, rnd: seededRandom(`${task.seed}|${task.range}|${mode}`) });
 }
 export const taskKey = task => task ? `${task.seed}|${task.range}|${task.mode}|${task.n}` : '';
 export const poolSize = (ids, mode, opts) => questionPool(ids, mode, opts).length;

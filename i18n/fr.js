@@ -311,7 +311,7 @@ export default {
   "quiz.count": "Questions",
   "quiz.other": "Autres quiz",
   "quiz.m.mix": "Mélangé",
-  "quiz.m.mixSub": "Questions sur les explications, l'anglais, les exemples, des situations, des nombres et à l'écoute, mélangées.",
+  "quiz.m.mixSub": "Questions sur les explications, les exemples, des situations et des nombres, mélangées.",
   "quiz.m.scene": "Situations",
   "quiz.m.sceneSub": "« Dans cette situation, quel terme ? »",
   "quiz.m.fact": "Nombres et ordre",

@@ -390,7 +390,7 @@ function quickHTML() {
   const q = S.klass && S.klass.quick;
   if (q && quickOn() && (!S.qt || S.qt.id !== q.id)) {
     const run = Store.get('netw.qrun', null), past = Store.get('netw.quicks', {})[q.id];
-    const def = { range: q.range, mode: q.mode, n: q.n };
+    const def = { range: q.range, mode: q.mode, n: q.n, at: q.at };
     S.qt = { id: q.id, def, list: quickList(q.id, def), ans: past && past.ans ? past.ans : run && run.id === q.id ? run.ans : [] };
   }
   const st = quickState(), qt = S.qt;
@@ -417,7 +417,7 @@ function quickHTML() {
   </main>`;
 }
 /* the questions of a quick test: the same for everyone, and the same again later (seeded by its id) */
-const quickList = (id, def) => taskQuiz({ range: def.range, mode: def.mode, n: def.n, seed: id }, seededRandom);
+const quickList = (id, def) => taskQuiz({ range: def.range, mode: def.mode, n: def.n, seed: id, at: def.at }, seededRandom);
 const optText = (x, v) => x.type === 'fact' ? choiceHTML(FACT_BY_ID[x.fact].opts[+v], T) : x.type === 't2d' ? bi(`w.${v}.desc`) : termHTML(WORD_BY_ID[v]) + enName(WORD_BY_ID[v]);
 /* every question with ○ × –, the right answer and (when wrong) what the student chose */
 function qtReviewList(list, ans) {

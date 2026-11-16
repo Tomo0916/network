@@ -311,7 +311,7 @@ export default {
   "quiz.count": "Jumlah soal",
   "quiz.other": "Kuis lain",
   "quiz.m.mix": "Campuran",
-  "quiz.m.mixSub": "Soal penjelasan, bahasa Inggris, contoh, situasi, angka, dan mendengar dicampur.",
+  "quiz.m.mixSub": "Soal penjelasan, contoh, situasi, dan angka dicampur.",
   "quiz.m.scene": "Situasi",
   "quiz.m.sceneSub": "\"Dalam situasi ini, istilah apa?\"",
   "quiz.m.fact": "Angka dan urutan",

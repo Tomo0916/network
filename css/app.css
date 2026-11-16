@@ -946,3 +946,7 @@ body.presenter .lsn-p, body.presenter .lsn-lead { font-size: 1.25rem; }
 .wrap.lsn.lsn-shell.wide { max-width: 1320px; }
 .wrap.lsn.lsn-shell.narrow { max-width: 900px; }
 .mode .badge { display: inline-block; vertical-align: middle; margin-left: 4px; }
+.fcell.bin text { font-family: var(--mono); font-size: 12.5px; letter-spacing: .03em; }
+.fcell.bit text { font-family: var(--mono); font-size: 12px; }
+.fcell.bit.tiny text { font-size: 10px; }
+.fcell.q rect { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 2; }

@@ -311,7 +311,7 @@ export default {
   "quiz.count": "Số câu",
   "quiz.other": "Câu đố khác",
   "quiz.m.mix": "Trộn lẫn",
-  "quiz.m.mixSub": "Câu hỏi về lời giải thích, tiếng Anh, ví dụ, tình huống, con số và nghe được trộn lẫn.",
+  "quiz.m.mixSub": "Câu hỏi về lời giải thích, ví dụ, tình huống và con số được trộn lẫn.",
   "quiz.m.scene": "Tình huống",
   "quiz.m.sceneSub": "\"Trong tình huống này, thuật ngữ nào?\"",
   "quiz.m.fact": "Con số và thứ tự",

@@ -311,7 +311,7 @@ export default {
   "quiz.count": "题数",
   "quiz.other": "其他测验",
   "quiz.m.mix": "混合",
-  "quiz.m.mixSub": "解释、英文、比喻、情景、数字和听力题混在一起出。",
+  "quiz.m.mixSub": "解释、比喻、情景和数字题混在一起出。",
   "quiz.m.scene": "情景题",
   "quiz.m.sceneSub": "“在这种情况下，是哪个术语？”",
   "quiz.m.fact": "数字与顺序",

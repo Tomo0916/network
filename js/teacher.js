@@ -236,7 +236,7 @@ function viewData(view = C.view) {
   const c = C.cur;
   if (view !== 'task') {
     const q = quickById(view);
-    if (q) return { kind: 'quick', q, qs: taskQuiz({ range: q.range, mode: q.mode, n: q.n, seed: q.id }, seededRandom), att: C.all.filter(a => a.kind === 'quick' && a.seed === q.id) };
+    if (q) return { kind: 'quick', q, qs: taskQuiz({ range: q.range, mode: q.mode, n: q.n, seed: q.id, at: q.at }, seededRandom), att: C.all.filter(a => a.kind === 'quick' && a.seed === q.id) };
   }
   if (!c.task) return null;
   return { kind: 'task', qs: taskQuiz(c.task, seededRandom), att: C.all.filter(a => a.kind === 'task' && a.seed === c.task.seed) };
@@ -475,7 +475,7 @@ const classActions = {
   tcUndo() { C.draft = Object.assign({}, C.cur.task); render(); },
   tcSaveTask() {
     act(async () => {
-      const task = { range: C.draft.range, mode: C.draft.mode, n: Number(C.draft.n), seed: C.draft.seed };
+      const task = { range: C.draft.range, mode: C.draft.mode, n: Number(C.draft.n), seed: C.draft.seed, v: 2 };
       keepRow(await BE.updateClass(C.cur.id, { task }));
       await loadAttempts(); toast(T('tc.taskSent'));
     });

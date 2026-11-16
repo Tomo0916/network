@@ -311,7 +311,7 @@ export default {
   "quiz.count": "Questions",
   "quiz.other": "Other quizzes",
   "quiz.m.mix": "Mixed",
-  "quiz.m.mixSub": "Explanation, English, example, situation, number and listening questions, mixed.",
+  "quiz.m.mixSub": "Explanation, example, situation and number questions, mixed.",
   "quiz.m.scene": "Situations",
   "quiz.m.sceneSub": "\"In this situation, which term?\"",
   "quiz.m.fact": "Numbers and order",
