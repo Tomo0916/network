@@ -42,12 +42,12 @@ export default {
       drawTable(); tally();
       say(st.mode === 'hub' ? 'dm.introHub' : 'dm.introSwitch');
     }
-    function drawTable(fresh) {
+    function drawTable(fresh, hit) {
       if (st.mode !== 'switch') { box.hidden = true; return; }
       box.hidden = false;
       const rows = Object.entries(st.table);
       box.innerHTML = `<h3>${ctx.H('dm.table')}</h3><table class="mactable"><thead><tr><th>MAC</th><th>${ctx.H('dm.port')}</th></tr></thead><tbody>${rows.length
-        ? rows.map(([k, p]) => `<tr class="${k === fresh ? 'new' : ''}"><td>PC ${k} (${PCS[k][3]})</td><td>p${p}</td></tr>`).join('')
+        ? rows.map(([k, p]) => `<tr class="${k === fresh ? 'new' : ''} ${k === hit ? 'hit' : ''}"><td>PC ${k} (${PCS[k][3]})</td><td>p${p}</td></tr>`).join('')
         : `<tr><td colspan="2" class="muted">${ctx.H('dm.empty')}</td></tr>`}</tbody></table>
         <button class="linkbtn" data-k="clear">${ctx.H('dm.clear')}</button>`;
     }
@@ -73,7 +73,7 @@ export default {
         st.table[src] = PCS[src][2];
         drawTable(isNew ? src : null);
         const lead = isNew ? ctx.H('dm.learned', { a: src, p: 'p' + PCS[src][2] }) + ' ' : '';
-        if (st.table[dst]) { targets = [dst]; narr.innerHTML = lead + ctx.H('dm.knownDst', { b: dst, p: 'p' + st.table[dst] }); }
+        if (st.table[dst]) { targets = [dst]; drawTable(isNew ? src : null, dst); narr.innerHTML = lead + ctx.H('dm.knownDst', { b: dst, p: 'p' + st.table[dst] }); }
         else { targets = KEYS.filter(k => k !== src); narr.innerHTML = lead + ctx.H('dm.unknownDst', { b: dst }); after = 'dm.dropFlood'; }
       }
       await sleep(900);

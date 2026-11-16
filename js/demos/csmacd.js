@@ -34,11 +34,15 @@ export default {
     const s1 = svg.querySelector('.s1'), s2 = svg.querySelector('.s2'), crash = svg.querySelector('.crash');
     const span = (rect, a, b) => { a = Math.max(L, a); b = Math.min(R, b); rect.setAttribute('x', a); rect.setAttribute('width', Math.max(0, b - a)); };
     const clear = () => [s1, s2, crash].forEach(r => r.setAttribute('width', 0));
-    /* both signals grow by r pixels; the overlap is the collision */
-    const spread = (r, both = true) => {
+    /* the signals grow by r pixels from each PC. crash: the broken part (from the meeting point outwards).
+       two = false: only PC1 sends */
+    const MEET = MID - T1;
+    const spread = (r, crashOn, two = true) => {
       span(s1, T1 - r, T1 + r);
-      if (both) { span(s2, T2 - r, T2 + r); span(crash, T2 - r, T1 + r); } else span(s2, 0, 0);
+      if (two) span(s2, T2 - r, T2 + r); else span(s2, 0, 0);
+      if (crashOn) { const c = r - MEET; span(crash, MID - c, MID + c); } else span(crash, 0, 0);
     };
+    const spark = () => `<circle class="burst small" cx="${MID}" cy="${Y}" r="12"/>`;
     const burst = () => `<circle class="burst" cx="${MID}" cy="${Y}" r="24"/><text class="mark ng big" x="${MID}" y="${Y - 34}" text-anchor="middle">${ctx.T('dm.collision')}</text>`;
 
     async function go(step, still) {
@@ -56,28 +60,42 @@ export default {
         markNode(svg, 'p1', 'busy', ctx.T('dm.listening')); markNode(svg, 'p2', 'busy', ctx.T('dm.listening'));
         fx.innerHTML = `<text class="mark ok" x="${MID}" y="${Y - 18}" text-anchor="middle">${ctx.T('dm.free')}</text>`;
       }
+      /* ② both send: each signal spreads along the cable in both directions … */
       if (n === 2) {
         markNode(svg, 'p1', 'busy', ctx.T('dm.sending')); markNode(svg, 'p2', 'busy', ctx.T('dm.sending'));
-        if (still) spread(R - L);
-        else await tween(2200, p => spread(p * (R - L)), p => p);
+        if (still) spread(MEET, false, true);
+        else await tween(2000, p => spread(p * MEET, false, true), p => p);
+        fx.innerHTML = spark();
       }
+      /* ③ … they meet in the middle; the broken part spreads back until each PC notices it */
       if (n === 3) {
-        spread(R - L); svg.classList.add('jam'); fx.innerHTML = burst();
+        markNode(svg, 'p1', 'busy', ctx.T('dm.sending')); markNode(svg, 'p2', 'busy', ctx.T('dm.sending'));
+        fx.innerHTML = spark();
+        if (still) spread(R - L, true, true);
+        else await tween(2200, p => { const r = MEET + p * (R - L - MEET); spread(r, true, true);
+          if (r - MEET >= MEET) { markNode(svg, 'p1', 'ng', ctx.T('dm.detect')); markNode(svg, 'p2', 'ng', ctx.T('dm.detect')); } }, p => p);
+        svg.classList.add('jam'); fx.innerHTML = burst();
         markNode(svg, 'p1', 'ng', ctx.T('dm.detect')); markNode(svg, 'p2', 'ng', ctx.T('dm.detect'));
       }
+      /* ④ both stop and wait a random time: two timers run down */
       if (n === 4) {
-        markNode(svg, 'p1', 'busy', ''); markNode(svg, 'p2', 'busy', '');
-        const w = [[T1, 2], [T2, 5]].map(([x, v]) => {
-          const t = document.createElementNS(NS, 'text');
-          t.setAttribute('class', 'wait'); t.setAttribute('x', x); t.setAttribute('y', 132); t.setAttribute('text-anchor', 'middle');
-          t.textContent = ctx.T('dm.wait', { n: v }); fx.appendChild(t); return [t, v];
-        });
-        if (!still) for (let i = 1; i <= 5; i++) { await sleep(600); w.forEach(([t, v]) => { t.textContent = ctx.T('dm.wait', { n: Math.max(0, v - i) }); if (v - i <= 0) t.classList.add('zero'); }); }
+        markNode(svg, 'p1', '', ''); markNode(svg, 'p2', '', '');
+        const W = [[T1, 2], [T2, 5]];
+        fx.innerHTML = W.map(([x, v], i) => `<g class="timer"><rect class="tbar-bg" x="${x - 40}" y="118" width="80" height="10" rx="5"/><rect class="tbar t${i}" x="${x - 40}" y="118" width="${v * 16}" height="10" rx="5"/>
+          <text class="wait" x="${x}" y="150" text-anchor="middle">${ctx.T('dm.wait', { n: v })}</text></g>`).join('');
+        const bars = [...fx.querySelectorAll('.tbar')], texts = [...fx.querySelectorAll('.wait')];
+        const show = t => W.forEach(([x, v], i) => { const left = Math.max(0, v - t); bars[i].setAttribute('width', (left * 16).toFixed(1)); texts[i].textContent = ctx.T('dm.wait', { n: Math.ceil(left) }); texts[i].classList.toggle('zero', left <= 0); });
+        if (still) show(0); else await tween(3000, p => show(p * 5), p => p);
       }
+      /* ⑤ PC1 (shorter wait) listens, the cable is free, it sends; PC2's wait ends while the cable is busy, so it keeps waiting */
       if (n === 5) {
-        markNode(svg, 'p1', 'busy', ctx.T('dm.sending')); markNode(svg, 'p2', '', ctx.T('dm.listening'));
-        if (still) spread(R - L, false);
-        else await tween(2000, p => spread(p * (R - L), false), p => p);
+        if (!still) {
+          markNode(svg, 'p1', 'busy', ctx.T('dm.listening')); markNode(svg, 'p2', '', ctx.T('dm.wait', { n: 3 }));
+          svg.classList.add('listening'); await sleep(1000); svg.classList.remove('listening');
+        }
+        markNode(svg, 'p1', 'busy', ctx.T('dm.sending'));
+        if (still) spread(R - L, false, false);
+        else await tween(2000, p => { spread(p * (R - L), false, false); if (p > .5) markNode(svg, 'p2', 'busy', ctx.T('dm.busyWait')); }, p => p);
         markNode(svg, 'p1', 'ok', '✓'); markNode(svg, 'p2', 'ok', '✓ ' + ctx.T('dm.recv'));
       }
       busy = false;

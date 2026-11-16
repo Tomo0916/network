@@ -74,6 +74,10 @@ export const LESSON_PAGES = {
   ]
 };
 export const hasPage = n => !!LESSON_PAGES[n];
+/** lessons that have a page, in order, and the one before / after n */
+export const PAGE_LIST = Object.keys(LESSON_PAGES).map(Number).sort((a, b) => a - b);
+export const prevPage = n => PAGE_LIST.filter(x => x < n).pop();
+export const nextPage = n => PAGE_LIST.find(x => x > n);
 
 /** every i18n key the pages use (for tools/check.mjs) */
 export function lessonKeys() {

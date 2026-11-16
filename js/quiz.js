@@ -117,7 +117,7 @@ export const qidOf = q => q.scene ? 's:' + q.scene : q.fact ? 'f:' + q.fact : q.
  * task = { range, mode, n, seed } (set by the teacher). Every student, and the teacher's live table,
  * makes the same questions from it. Listening questions are always included in the listen mode only,
  * so that the questions do not depend on whether a device can speak. */
-export const TASK_MODES = ['mix', 'scene', 'fact', 'listen'];
+export const TASK_MODES = ['mix', 'scene', 'fact'];   /* listening questions are not used in class (an old 'listen' task becomes 'mix') */
 export const TASK_COUNTS = [5, 10, 15, 20];
 export function taskQuiz(task, seededRandom) {
   if (!task || !isRange(task.range)) return [];

@@ -284,13 +284,16 @@ Object.assign(FIGURES, {
   },
   /* L16: the Ethernet frame */
   ethFrame(T) {
+    /* drawn with HTML boxes rather than SVG, so the labels wrap and never overlap (and the row wraps on a phone) */
     const B = n => T('dm.bytes', { n });
-    return `${svgOpen(470, 150, T('fg.ethFrameAlt'))}
-      ${cells(10, 40, 56, [{ w: 86, label: term('preamble'), sub: B(8), cls: 'c0', ja: 1 }, { w: 70, label: T('fg.dstMacS'), sub: B(6), cls: 'c1' }, { w: 70, label: T('fg.srcMacS'), sub: B(6), cls: 'c1' },
-        { w: 52, label: T('fg.type'), sub: B(2), cls: 'c1' }, { w: 122, label: T('fg.data'), sub: B('46–1500'), cls: 'c2' }, { w: 50, label: 'FCS', sub: B(4), cls: 'c3' }])}
-      ${brace(96, 288, 104, term('header')).replace('<text', '<text lang="ja"')}
-      ${txt(53, 30, '1010…', 'small mono')}
-    </svg>`;
+    const cell = (cls, label, sub, grow, ja, extra = '') => `<div class="hf-cell ${cls}" style="flex-grow:${grow}">${extra}<b ${ja ? 'lang="ja"' : ''}>${escAttr(label)}</b><span>${escAttr(sub)}</span></div>`;
+    return `<div class="hframe" role="img" aria-label="${escAttr(T('fg.ethFrameAlt'))}">
+      ${cell('c0', term('preamble'), B(8), 8, 1, '<i>1010…</i>')}
+      <div class="hf-group" style="flex-grow:15"><div class="hf-row">${cell('c1', T('fg.dstMacS'), B(6), 6)}${cell('c1', T('fg.srcMacS'), B(6), 6)}${cell('c1', T('fg.type'), B(2), 4)}</div>
+        <div class="hf-brace" lang="ja">${escAttr(term('header'))}</div></div>
+      ${cell('c2', T('fg.data'), B('46–1500'), 12)}
+      ${cell('c3', 'FCS', B(4), 4)}
+    </div>`;
   },
   /* L16: checking a frame with the FCS */
   fcsCheck(T) {

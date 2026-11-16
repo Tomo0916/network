@@ -13,13 +13,13 @@
 import { LANGS, loadLang, detectLang, htmlLang, t, th, esc } from './i18n.js';
 import { WORDS, WORD_BY_ID } from './words.js';
 import { GROUP_BY_ID, DEMOS, CHAPTERS } from './groups.js';
-import { LESSON_PAGES, hasPage, termRefs } from './lessons.js';
+import { LESSON_PAGES, hasPage, termRefs, PAGE_LIST, prevPage, nextPage } from './lessons.js';
 import { FIGURES } from './figures.js';
 import { RANGES, RANGE_SETS, isRange, wordsIn, groupsIn, makeQuiz, makeSort, poolSize, taskQuiz, taskKey, qidOf } from './quiz.js';
 import { FACT_BY_ID } from './facts.js';
 import { Store, loadSettings, saveSettings, loadProgress, saveProgress, recordAnswer, dueWords } from './store.js';
 import * as BE from './backend.js';
-import { I, applySettings, langSelect, langOptions, modal, closeModal, seededRandom, toast } from './ui.js';
+import { I, applySettings, langSelect, langOptions, modal, closeModal, seededRandom, toast, shuffle } from './ui.js';
 import { termHTML, enName, rangeLabel as rangeLabelOf, rangeOptions, speakBtn as speakBtnOf, speak, canSpeak, choiceHTML } from './common.js';
 
 const S = {
@@ -93,9 +93,19 @@ function render() {
   const v = S.route.view;
   const body = { home: homeHTML, words: wordsHTML, cards: cardsHTML, quiz: quizHTML, review: quizHTML, task: quizHTML, sort: sortHTML, demos: demosHTML, class: classHTML, quick: quickHTML, text: textHTML, lesson: lessonHTML }[v]();
   document.title = (v === 'home' ? '' : (v === 'lesson' ? T('lesson.' + S.route.n) : T(v === 'task' ? 'cls.task' : v === 'class' ? 'cls.title' : v === 'quick' ? 'cls.quick' : 'nav.' + v)) + ' · ') + T('app.name');
+  /* an animation keeps running (and keeps its state, e.g. a switch's MAC table) when the page is drawn again
+     for the same page and language, e.g. after a class update */
+  const keep = new Map();
+  app.querySelectorAll('[data-demo-key]').forEach(el => keep.set(el.dataset.demoKey, el));
   app.innerHTML = headerHTML() + liveBanner() + body + footerHTML();
-  if (v === 'demos') mountDemo(S.route.id);
-  if (v === 'lesson') document.querySelectorAll('[data-demo]').forEach(el => mountDemoIn(el, el.dataset.demo, JSON.parse(el.dataset.opts || '{}')));
+  const slots = v === 'demos' ? [...app.querySelectorAll('#demo-root')] : v === 'lesson' ? [...app.querySelectorAll('[data-demo]')] : [];
+  slots.forEach((el, i) => {
+    const id = v === 'demos' ? S.route.id : el.dataset.demo, key = `${location.hash}|${i}|${id}|${L()}`;
+    const old = keep.get(key);
+    if (old) { old.removeAttribute('id'); el.replaceWith(old); if (v === 'demos') old.id = 'demo-root'; return; }
+    el.dataset.demoKey = key;
+    if (v === 'demos') mountDemo(id); else mountDemoIn(el, id, JSON.parse(el.dataset.opts || '{}'));
+  });
   if (v === 'quiz' || v === 'review' || v === 'task') afterQuizRender();
   if (v === 'quick') afterQuickRender();
   if (v === 'words') { const s = document.getElementById('search'); if (s && S.query) { s.focus(); s.setSelectionRange(S.query.length, S.query.length); } }
@@ -154,8 +164,10 @@ function homeHTML() {
       </div>
     </section>
     ${classCardHTML()}
+    ${textEntryHTML(false)}
     <h2 class="sec-title">${H('home.modes')}</h2>
     <section class="modes">
+      ${mode('text', I.book, 'nav.text', 'lsn.homeSub')}
       ${mode('words', I.list, 'nav.words', 'mode.words')}
       ${mode('cards', I.cards, 'nav.cards', 'mode.cards')}
       ${mode('quiz', I.quiz, 'nav.quiz', 'mode.quiz')}
@@ -246,6 +258,7 @@ function classCardHTML() {
       ${done ? `<span class="tag ok">${I.check}${H('cls.done', { a: done.score, b: done.n })}</span>` : ''}
       <a class="btn ${done ? 'btn-ghost' : 'btn-primary'}" href="#/task">${I.flag}${H(done ? 'cls.taskAgain' : 'cls.taskStart')}</a></div>`
       : `<p class="muted">${H('cls.noTask')}</p>`}
+    ${!qk && Object.values(Store.get('netw.quicks', {})).some(r => r.def) ? `<a class="linkbtn" href="#/quick">${I.flag}${H('cls.qtPast')}</a>` : ''}
   </section>`;
 }
 const pinInput = () => `<input name="pin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required>`;
@@ -314,7 +327,7 @@ function finishQuick() {
   const qt = S.qt;
   if (!qt || quickDone(qt.id)) return;
   const all = Store.get('netw.quicks', {});
-  all[qt.id] = { score: qt.ans.filter(a => a.ok).length, n: qt.list.length, at: Date.now() };
+  all[qt.id] = { score: qt.ans.filter(a => a.ok).length, n: qt.list.length, at: Date.now(), def: qt.def, ans: qt.ans };
   const keys = Object.keys(all); if (keys.length > 40) delete all[keys[0]];
   Store.set('netw.quicks', all); Store.del('netw.qrun');
 }
@@ -322,11 +335,12 @@ function quickHTML() {
   if (!S.cls) return taskHTMLorStart();
   const q = S.klass && S.klass.quick;
   if (q && quickOn() && (!S.qt || S.qt.id !== q.id)) {
-    const run = Store.get('netw.qrun', null);
-    S.qt = { id: q.id, list: taskQuiz({ range: q.range, mode: q.mode, n: q.n, seed: q.id }, seededRandom), ans: run && run.id === q.id ? run.ans : [] };
+    const run = Store.get('netw.qrun', null), past = Store.get('netw.quicks', {})[q.id];
+    const def = { range: q.range, mode: q.mode, n: q.n };
+    S.qt = { id: q.id, def, list: quickList(q.id, def), ans: past && past.ans ? past.ans : run && run.id === q.id ? run.ans : [] };
   }
   const st = quickState(), qt = S.qt;
-  if (st === 'none') return `<main class="wrap narrow"><section class="card empty"><div class="empty-icon">${I.flag}</div><h1>${H('cls.quick')}</h1><p class="muted">${H('cls.noQuick')}</p><div class="row-btns"><a class="btn btn-ghost" href="#/">${H('nav.home')}</a></div></section></main>`;
+  if (st === 'none') return `<main class="wrap narrow"><section class="card empty"><div class="empty-icon">${I.flag}</div><h1>${H('cls.quick')}</h1><p class="muted">${H('cls.noQuick')}</p><div class="row-btns"><a class="btn btn-ghost" href="#/">${H('nav.home')}</a></div></section>${pastQuicksHTML()}</main>`;
   if (st === 'wait') return `<main class="wrap narrow"><section class="card empty quick-wait"><h1>${H('cls.quick')}</h1>
     <p class="muted">${H('cls.taskInfo', { range: rangeLabel(q.range), mode: T('quiz.m.' + q.mode), n: q.n })}${q.end ? ' · ' + H('cls.quickLimit', { t: mmss(Date.parse(q.end) - Date.parse(q.at)) }) : ''}</p>
     <div class="countdown" id="qt-count">${Math.max(0, Math.ceil((Date.parse(q.at) - now()) / 1000))}</div><p>${H('cls.quickSoon')}</p></section></main>`;
@@ -335,10 +349,9 @@ function quickHTML() {
     const score = qt.ans.filter(a => a.ok).length;
     return `<main class="wrap narrow"><section class="card empty"><div class="empty-icon">${I.flag}</div><h1>${H('cls.quickEnd')}</h1>
       <p class="big-score">${score} / ${qt.list.length}</p>
-      <ol class="qt-review">${qt.list.map((x, i) => { const a = qt.ans[i], w = WORD_BY_ID[x.id];
-        const right = x.type === 'fact' ? choiceHTML(FACT_BY_ID[x.fact].opts[0], T) : termHTML(w) + enName(w);
-        return `<li class="${a ? (a.ok ? 'ok' : 'ng') : 'skip'}"><span class="mk">${a ? (a.ok ? '○' : '×') : '–'}</span><div><span class="muted small">${H('quiz.' + x.type)}</span><div>${a && a.ok ? right : th('quiz.answerIs', L(), { t: right })}</div></div></li>`; }).join('')}</ol>
-      <div class="row-btns"><a class="btn btn-ghost" href="#/">${H('nav.home')}</a></div></section></main>`;
+      ${quickActions(qt.id, qt.list, qt.ans)}
+      ${qtReviewList(qt.list, qt.ans)}
+      <div class="row-btns"><a class="btn btn-ghost" href="#/">${H('nav.home')}</a></div></section>${pastQuicksHTML(qt.id)}</main>`;
   }
   const x = qt.list[qt.ans.length], w = WORD_BY_ID[x.id];
   return `<main class="wrap narrow">
@@ -348,6 +361,47 @@ function quickHTML() {
     ${qBox(x)}
     <div class="opts">${x.opts.map((v, i) => `<button class="opt" data-act="qtAnswer" data-id="${v}"><span class="k">${i + 1}</span>${qOpt(x, v, false)}</button>`).join('')}</div>
   </main>`;
+}
+/* the questions of a quick test: the same for everyone, and the same again later (seeded by its id) */
+const quickList = (id, def) => taskQuiz({ range: def.range, mode: def.mode, n: def.n, seed: id }, seededRandom);
+const optText = (x, v) => x.type === 'fact' ? choiceHTML(FACT_BY_ID[x.fact].opts[+v], T) : x.type === 't2d' ? bi(`w.${v}.desc`) : termHTML(WORD_BY_ID[v]) + enName(WORD_BY_ID[v]);
+/* every question with ○ × –, the right answer and (when wrong) what the student chose */
+function qtReviewList(list, ans) {
+  return `<ol class="qt-review">${list.map((x, i) => {
+    const a = ans[i], right = optText(x, x.answer);
+    return `<li class="${a ? (a.ok ? 'ok' : 'ng') : 'skip'}"><span class="mk">${a ? (a.ok ? '○' : '×') : '–'}</span><div><span class="muted small">${H('quiz.' + x.type)}</span>
+      <div>${a && a.ok ? right : th('quiz.answerIs', L(), { t: right })}</div>
+      ${a && !a.ok ? `<div class="qt-your">${H('cls.qtYour', { t: '' })}${optText(x, a.v)}</div>` : ''}</div></li>`; }).join('')}</ol>`;
+}
+/* "review the mistakes" and "try the same test again" (practice: not sent to the teacher) */
+function quickActions(id, list, ans) {
+  const wrong = list.filter((x, i) => !(ans[i] && ans[i].ok)).length;
+  return `<div class="qt-actions">
+    ${wrong ? `<button class="btn btn-primary" data-act="qtPractice" data-id="${esc(id)}" data-which="wrong">${I.repeat}${H('cls.qtReview', { n: wrong })}</button>`
+      : `<span class="tag ok">${I.check}${H('cls.qtAllOk')}</span>`}
+    <button class="btn btn-ghost" data-act="qtPractice" data-id="${esc(id)}" data-which="all">${I.reset}${H('cls.qtRetry')}</button>
+    <p class="muted small">${H('cls.qtPracticeNote')}</p></div>`;
+}
+function pastQuicksHTML(skip) {
+  const all = Store.get('netw.quicks', {});
+  const rows = Object.entries(all).filter(([id, r]) => id !== skip && r.def).sort((a, b) => b[1].at - a[1].at).slice(0, 10);
+  if (!rows.length) return '';
+  return `<section class="card panel qt-past"><h2>${H('cls.qtPast')}</h2><ul>${rows.map(([id, r]) => {
+    const wrong = r.n - r.score;
+    return `<li><div><b>${r.score} / ${r.n}</b><span class="muted small">${esc(new Date(r.at).toLocaleDateString())} · ${esc(rangeLabel(r.def.range))}</span></div>
+      <div class="row-btns left">${wrong ? `<button class="btn btn-ghost btn-sm" data-act="qtPractice" data-id="${esc(id)}" data-which="wrong">${I.repeat}${H('cls.qtReview', { n: wrong })}</button>` : ''}
+      <button class="btn btn-ghost btn-sm" data-act="qtPractice" data-id="${esc(id)}" data-which="all">${I.reset}${H('cls.qtRetry')}</button></div></li>`; }).join('')}</ul></section>`;
+}
+function startQuickPractice(id, which) {
+  const r = Store.get('netw.quicks', {})[id];
+  const list = S.qt && S.qt.id === id ? S.qt.list : r && r.def ? quickList(id, r.def) : [];
+  const ans = S.qt && S.qt.id === id ? S.qt.ans : r ? r.ans || [] : [];
+  const pick = which === 'wrong' ? list.filter((x, i) => !(ans[i] && ans[i].ok)) : list;
+  if (!pick.length) return;
+  clearAuto();
+  S.quiz = { practice: { id, which }, review: false, mode: 'mix', list: pick.map(x => ({ ...x, opts: shuffle([...x.opts]) })), i: 0, score: 0, ans: null, missed: [], state: 'q', spoken: -1 };
+  if (location.hash === '#/quiz') render(); else location.hash = '#/quiz';
+  window.scrollTo(0, 0);
 }
 let qtSpoken = null;
 function afterQuickRender() {
@@ -504,13 +558,13 @@ function cardsHTML() {
 }
 
 /* ---------- quiz and review ----------
- * modes: mix · scene · fact · listen (see js/quiz.js). Words the student often gets wrong come first. */
-const QUIZ_MODES = [['mix', 'shuffle'], ['scene', 'scene'], ['fact', 'hash'], ['listen', 'sound']];
+ * modes: mix · scene · fact (see js/quiz.js; listening questions are switched off). Words the student often gets wrong come first. */
+const QUIZ_MODES = [['mix', 'shuffle'], ['scene', 'scene'], ['fact', 'hash']];
 function wordWeight(id) {
   const st = S.progress.stats[id], r = S.progress.review[id];
   return (r ? 0.5 : 0) + (st && st.ok + st.ng ? st.ng / (st.ok + st.ng) * 0.5 : 0);
 }
-const quizOpts = () => ({ listen: canSpeak, weight: wordWeight });
+const quizOpts = () => ({ listen: false, weight: wordWeight });
 function startQuiz(review, mode = 'mix') {
   const ids = review ? dueWords(S.progress) : words().map(w => w.id);
   const n = review ? 10 : Number(S.settings.quizN || 10);
@@ -598,7 +652,8 @@ function quizHTML() {
       <p class="big-score">${Q.score} / ${n}</p>
       ${missed.length ? `<div class="missed"><h2>${H('quiz.missed')}</h2><p class="muted small">${H('quiz.toReview')}</p>
         <ul>${missed.map(id => { const w = WORD_BY_ID[id]; return `<li><div class="term-row"><div>${termHTML(w)}${enName(w)}</div>${speakBtn(w)}</div><div>${bi(`w.${id}.desc`)}</div></li>`; }).join('')}</ul></div>` : ''}
-      <div class="row-btns">${task ? `<button class="btn btn-primary" data-act="taskRestart">${I.reset}${H('btn.again')}</button><a class="btn btn-ghost" href="#/">${H('nav.home')}</a>`
+      <div class="row-btns">${Q.practice ? `<button class="btn btn-primary" data-act="qtPracticeAgain">${I.reset}${H('btn.again')}</button><a class="btn btn-ghost" href="#/quick">${H('cls.qtBack')}</a>`
+        : task ? `<button class="btn btn-primary" data-act="taskRestart">${I.reset}${H('btn.again')}</button><a class="btn btn-ghost" href="#/">${H('nav.home')}</a>`
         : `<button class="btn btn-primary" data-act="quizStart" data-mode="${Q.mode || 'mix'}">${I.reset}${H('btn.again')}</button><button class="btn btn-ghost" data-act="quizMenu">${H('quiz.other')}</button>`}</div></section></main>`;
   }
   const q = Q.list[Q.i], w = WORD_BY_ID[q.id], a = Q.ans, f = q.fact && FACT_BY_ID[q.fact];
@@ -610,7 +665,7 @@ function quizHTML() {
   const ok = a === q.answer;
   const right = q.type === 'fact' ? choiceHTML(f.opts[0], T) : esc(w.term);
   return `<main class="wrap narrow">
-    <div class="qhead"><h1 class="page-title">${H(task ? 'cls.task' : review ? 'review.title' : 'quiz.title')}</h1><div class="qhead-r">${autoNextBtn()}<span class="count">${Q.i + 1} / ${Q.list.length}</span></div></div>
+    <div class="qhead"><h1 class="page-title">${H(task ? 'cls.task' : review ? 'review.title' : Q.practice ? 'cls.qtPractice' : 'quiz.title')}</h1><div class="qhead-r">${autoNextBtn()}<span class="count">${Q.i + 1} / ${Q.list.length}</span></div></div>
     <div class="bar"><i style="width:${(Q.i + (a ? 1 : 0)) / Q.list.length * 100}%"></i></div>
     <p class="prompt">${H('quiz.' + q.type)} ${q.type === 's2t' || q.type === 'fact' ? '' : groupTag(GROUP_BY_ID[w.group])}</p>
     ${box}
@@ -638,7 +693,7 @@ function answer(id) {
   Q.ans = id;
   if (ok) Q.score++; else Q.missed.push(q.id);
   recordAnswer(S.progress, q.id, ok, Q.review); save();
-  if (S.cls) {
+  if (S.cls && !Q.practice) {
     BE.logAttempt({ class_id: S.cls.id, word: q.id, qid: qidOf(q), kind: Q.task ? 'task' : Q.review ? 'review' : 'quiz', seed: Q.task ? String(Q.task.seed).slice(0, 40) : null, pos: Q.task ? Q.i : null, choice: String(id).slice(0, 40), ok });
     if (Q.task) saveTaskRun();
   }
@@ -707,16 +762,19 @@ const linkTerms = html => html.replace(/\[\[([a-z0-9]+):(.*?)\]\]/g, (m, id, txt
 const lessonWords = n => WORDS.filter(w => w.lesson === n);
 function textHTML() {
   return `<main class="wrap narrow"><div class="page-head"><div><h1 class="page-title">${H('lsn.title')}</h1><p class="muted">${bi('lsn.sub')}</p></div></div>
+    ${textEntryHTML(true)}
     ${CHAPTERS.map(c => `<section class="card toc"><h2 class="toc-ch"><span class="ch-no">${c.n}</span>${H('ch.' + c.n)}</h2><ol class="toc-list">
       ${Array.from({ length: c.to - c.from + 1 }, (_, i) => c.from + i).map(n => {
         const ws = lessonWords(n), page = hasPage(n);
         const inner = `<span class="toc-n">${H('range.lesson', { n })}</span><span class="toc-t">${H('lesson.' + n)}</span>`;
-        return `<li class="${page ? 'has-page' : ''}">${page ? `<a href="#/lesson/${n}">${inner}<span class="tag accent">${I.book}${H('lsn.read')}</span></a>` : `<div>${inner}${ws.length ? `<button class="linkbtn" data-act="lessonQuiz" data-n="${n}">${I.quiz}${H('lsn.quizShort', { n: ws.length })}</button>` : ''}</div>`}</li>`;
+        return `<li class="${page ? 'has-page' : ''}">${page ? `<a href="#/lesson/${n}">${inner}${readMap()[n] ? `<span class="tag ok">${I.check}${H('lsn.done')}</span>` : `<span class="tag accent">${I.book}${H('lsn.read')}</span>`}</a>` : `<div>${inner}${ws.length ? `<button class="linkbtn" data-act="lessonQuiz" data-n="${n}">${I.quiz}${H('lsn.quizShort', { n: ws.length })}</button>` : ''}</div>`}</li>`;
       }).join('')}</ol></section>`).join('')}
   </main>`;
 }
 function lessonHTML() {
   const n = S.route.n, blocks = LESSON_PAGES[n], k = key => `ls.${n}.${key}`;
+  markRead(n);
+  const pv = prevPage(n), nx = nextPage(n);
   const ch = CHAPTERS.find(c => n >= c.from && n <= c.to);
   const ws = lessonWords(n);
   const refs = [...new Set(blocks.flatMap(b => ['lead', 'p'].filter(f => b[f]).flatMap(f => termRefs(t(k(b[f]), L())))))].filter(id => WORD_BY_ID[id] && !ws.some(w => w.id === id));
@@ -732,7 +790,8 @@ function lessonHTML() {
   }).join('');
   const tcard = w => `<button class="lsn-term card" data-act="termPop" data-id="${w.id}" style="--gc:var(--g-${w.group})"><span class="term-row"><span>${termHTML(w)}${enName(w)}</span></span><span class="lsn-term-d">${bi(`w.${w.id}.desc`)}</span></button>`;
   return `<main class="wrap lsn">
-    <nav class="crumb"><a href="#/text">${H('lsn.title')}</a> › <span>${H('ch.' + ch.n)}</span></nav>
+    <div class="lsn-top"><nav class="crumb"><a href="#/text">${H('lsn.title')}</a> › <span>${H('ch.' + ch.n)}</span></nav>
+      <span class="lsn-arrows">${pv ? `<a class="icon-btn" href="#/lesson/${pv}" title="${esc(T('lsn.prev'))}" aria-label="${esc(T('lsn.prev'))}">${I.prev}</a>` : ''}<span class="mono small">${PAGE_LIST.indexOf(n) + 1} / ${PAGE_LIST.length}</span>${nx ? `<a class="icon-btn" href="#/lesson/${nx}" title="${esc(T('lsn.next'))}" aria-label="${esc(T('lsn.next'))}">${I.next}</a>` : ''}</span></div>
     <header class="lsn-head"><span class="lsn-no">${H('range.lesson', { n })}</span><h1>${bi('lesson.' + n)}</h1></header>
     <p class="lsn-tip muted">${I.bulb}${H('lsn.tapTip')}</p>
     ${body}
@@ -740,8 +799,29 @@ function lessonHTML() {
       ${refs.length ? `<h3>${H('lsn.related')}</h3><div class="lsn-tgrid">${refs.map(id => tcard(WORD_BY_ID[id])).join('')}</div>` : ''}</section>
     <div class="lsn-cta card"><div><b>${H('lsn.quizTitle')}</b><p class="muted">${bi('lsn.quizSub', { n: ws.length })}</p></div>
       <button class="btn btn-primary" data-act="lessonQuiz" data-n="${n}">${I.quiz}${H('lsn.quizGo')}${I.next}</button></div>
-    <nav class="lsn-nav"><a class="btn btn-ghost" href="#/text">${I.list}${H('lsn.toc')}</a></nav>
+    <nav class="lsn-pn">
+      ${pv ? `<a class="card lsn-pn-a prev" href="#/lesson/${pv}"><span class="muted small">${I.prev}${H('lsn.prev')}</span><b>${H('range.lesson', { n: pv })} ${H('lesson.' + pv)}</b></a>` : '<span></span>'}
+      ${nx ? `<a class="card lsn-pn-a next" href="#/lesson/${nx}"><span class="muted small">${H('lsn.next')}${I.next}</span><b>${H('range.lesson', { n: nx })} ${H('lesson.' + nx)}</b></a>` : '<span></span>'}
+    </nav>
+    <nav class="lsn-nav"><a class="btn btn-ghost" href="#/text">${I.list}${H('lsn.toc')}</a><span class="muted small">${H('lsn.keys')}</span></nav>
   </main>`;
+}
+/* which lessons were read, and the last one (for "continue reading") */
+const readMap = () => Store.get('netw.read', {});
+function markRead(n) { const m = readMap(); if (!m[n]) { m[n] = Date.now(); Store.set('netw.read', m); } Store.set('netw.lastLesson', n); }
+/* the entry to the textbook on the home page and at the top of the contents */
+function textEntryHTML(onToc) {
+  if (!PAGE_LIST.length) return '';
+  const last = Store.get('netw.lastLesson', null), read = readMap();
+  const cont = hasPage(last) ? last : PAGE_LIST[0];
+  const nRead = PAGE_LIST.filter(n => read[n]).length;
+  const chips = CHAPTERS.map(c => { const ps = PAGE_LIST.filter(n => n >= c.from && n <= c.to); return ps.length ? `<div class="tx-ch"><span class="ch-no">${c.n}</span>
+    <span class="tx-chips">${ps.map(n => `<a class="tx-chip ${read[n] ? 'read' : ''} ${n === last ? 'last' : ''}" href="#/lesson/${n}" title="${esc(T('lesson.' + n))}">${n}</a>`).join('')}</span></div>` : ''; }).join('');
+  return `<section class="card tx-entry">
+    <div class="tx-head">${I.book}<div><b>${H(onToc ? 'lsn.title' : 'lsn.homeTitle')}</b><span class="muted small">${bi('lsn.homeSub')} · ${H('lsn.readN', { n: nRead })}</span></div></div>
+    <a class="tx-cont" href="#/lesson/${cont}"><span class="muted small">${H(hasPage(last) ? 'lsn.continue' : 'lsn.start')}</span><b>${H('range.lesson', { n: cont })} ${H('lesson.' + cont)}</b>${I.next}</a>
+    <div class="tx-chs">${chips}</div>
+  </section>`;
 }
 function termPop(id) {
   const w = WORD_BY_ID[id];
@@ -773,6 +853,8 @@ const actions = {
   printWords() { window.print(); },
   goLesson(el) { closeModal(); location.hash = '#/lesson/' + el.dataset.n; },
   lessonQuiz(el) { S.settings.range = 'lesson-' + el.dataset.n; saveSettings(S.settings); S.quiz = null; location.hash = '#/quiz'; },
+  qtPractice(el) { startQuickPractice(el.dataset.id, el.dataset.which); },
+  qtPracticeAgain() { const Q = S.quiz; if (Q && Q.practice) { Q.list = shuffle(Q.list.map(x => ({ ...x, opts: shuffle([...x.opts]) }))); Object.assign(Q, { i: 0, score: 0, ans: null, missed: [], state: 'q', spoken: -1 }); render(); window.scrollTo(0, 0); } },
   quizStart(el) { startQuiz(S.route.view === 'review', el.dataset.mode || 'mix'); render(); },
   quizMenu() { clearAuto(); S.quiz = null; render(); },
   answer(el) { answer(el.dataset.id); },
@@ -840,6 +922,10 @@ document.addEventListener('keydown', e => {
   }
   if (v === 'quick' && S.qt && quickState() === 'q' && /^[1-4]$/.test(e.key)) {
     const id = S.qt.list[S.qt.ans.length].opts[+e.key - 1]; if (id) qtAnswer(id);
+  }
+  if (v === 'lesson' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft') && !e.altKey && !e.metaKey && !e.ctrlKey) {
+    const to = e.key === 'ArrowRight' ? nextPage(S.route.n) : prevPage(S.route.n);
+    if (to) location.hash = '#/lesson/' + to;
   }
   if (v === 'cards') {
     if (e.key === 'ArrowRight') { const b = document.querySelector('[data-act="cardNext"]'); if (b && !b.disabled) b.click(); }

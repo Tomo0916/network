@@ -4,12 +4,12 @@ import { tween, sleep, escAttr, autoplay } from './kit.js';
 const STEPS = 5;
 /* field: [key, width in the drawing, bytes, colour class, what is written inside] */
 const FIELDS = [
-  ['pre', 70, '8', 'f-pre', '1010…'],
+  ['pre', 84, '8', 'f-pre', '1010…'],
   ['dst', 68, '6', 'f-hd', '…:0C'],
   ['src', 68, '6', 'f-hd', '…:0A'],
-  ['type', 46, '2', 'f-hd', '0800'],
-  ['data', 112, '46–1500', 'f-data', 'Hello!'],
-  ['fcs', 48, '4', 'f-fcs', 'CRC']
+  ['type', 50, '2', 'f-hd', '0800'],
+  ['data', 106, '46–1500', 'f-data', 'Hello!'],
+  ['fcs', 50, '4', 'f-fcs', 'CRC']
 ];
 const SHOWN = [['data'], ['dst', 'src', 'type', 'data'], ['dst', 'src', 'type', 'data', 'fcs'], FIELDS.map(f => f[0]), FIELDS.map(f => f[0])];
 const NEW = [['data'], ['dst', 'src', 'type'], ['fcs'], ['pre'], []];
@@ -64,25 +64,37 @@ export default {
       el.querySelector('[data-k="back"]').disabled = n === 0;
       el.querySelector('[data-k="fwd"]').disabled = n === STEPS - 1;
       const lay = layout(SHOWN[n]);
-      svg.innerHTML = `<line class="bus" x1="10" y1="206" x2="450" y2="206"/><text class="port" x="446" y="228" text-anchor="end">${escAttr(ctx.T('dm.cableShort'))} →</text><g class="bits-stream"></g>`
+      svg.innerHTML = `<line class="bus" x1="10" y1="206" x2="450" y2="206"/><text class="port" x="446" y="228" text-anchor="end">${escAttr(ctx.T('dm.cableShort'))} →</text>`
+        + (n === STEPS - 1 ? `<path class="feed" d="M${lay[0].x + 10} ${FY + FH + 4}V194"/>` : '') + `<g class="bits-stream"></g>`
         + brace(lay) + `<g class="frame">${lay.map(l => fieldSvg(l, !still && NEW[n].includes(l.f[0]))).join('')}</g>`;
       /* new fields drop in from above */
       if (!still) {
         const fresh = [...svg.querySelectorAll('.field.fresh')];
         await tween(700, p => fresh.forEach(g => { g.style.opacity = p; g.style.translate = `0 ${(-40 * (1 - p)).toFixed(1)}px`; }));
       }
-      /* last step: the frame turns into bits on the cable, preamble first */
+      /* last step: the frame goes onto the cable bit by bit, from the front (preamble) to the back (FCS).
+         Each field lights up while it is sent; its bits run along the cable to the right, so the
+         preamble's bits are always the furthest ahead. */
       if (n === STEPS - 1 && !still) {
-        const g = svg.querySelector('.frame'), bits = svg.querySelector('.bits-stream');
-        const stream = '10101010 10101011 0000…1100 0000…1010 08 00 …';
-        await tween(2600, p => {
-          g.style.translate = `${(p * 520).toFixed(1)}px ${(p * 40).toFixed(1)}px`;
-          g.style.opacity = 1 - Math.max(0, p - .55) * 2.2;
-          const shown = Math.floor(p * stream.length);
-          bits.innerHTML = `<text class="bitline" x="${Math.min(440, 20 + p * 600)}" y="196" text-anchor="end">${escAttr(stream.slice(0, shown))}</text>`;
+        const bits = svg.querySelector('.bits-stream'), groups = [...svg.querySelectorAll('.field')];
+        const DOWN = 196, START = 14, PER = 4, SPEED = 210;   // bits per field drawn, pixels per second of the animation
+        const chunks = [];
+        lay.forEach((l, fi) => { for (let b = 0; b < PER; b++) chunks.push({ fi, cls: l.f[3], t: (fi * PER + b) / (lay.length * PER) }); });
+        bits.innerHTML = chunks.map((c, i) => `<rect class="bitbox ${c.cls}" data-i="${i}" x="${START}" y="${DOWN - 9}" width="14" height="14" rx="3" opacity="0"/>`).join('');
+        const rects = [...bits.children], DUR = 6000, EMIT = .6;   // all bits leave during the first 62% of the time
+        await tween(DUR, p => {
+          const now = p * DUR / 1000;
+          chunks.forEach((c, i) => {
+            const t0 = c.t * EMIT * DUR / 1000, x = START + (now - t0) * SPEED;
+            const r = rects[i];
+            if (now < t0) { r.setAttribute('opacity', 0); return; }
+            r.setAttribute('x', Math.min(x, 470).toFixed(1));
+            r.setAttribute('opacity', x > 440 ? Math.max(0, 1 - (x - 440) / 30).toFixed(2) : 1);
+          });
+          const cur = Math.min(lay.length - 1, Math.floor(p / EMIT * lay.length));
+          groups.forEach((g, gi) => { g.classList.toggle('sending', p < EMIT && gi === cur); g.classList.toggle('sent', gi < cur || p >= EMIT); });
         }, p => p);
-        await sleep(400);
-        g.style.translate = ''; g.style.opacity = '';
+        await sleep(300);
       }
       busy = false;
     }
