@@ -598,7 +598,11 @@ input.up { text-transform: uppercase; letter-spacing: .12em; }
 .live-tbl thead th { font-weight: 600; vertical-align: bottom; background: var(--surface-2); }
 .live-tbl thead .qn { display: block; font-family: var(--mono); font-weight: 700; }
 .live-tbl thead .qt { display: block; font-size: .7rem; color: var(--ink-2); max-width: 5.5em; overflow: hidden; text-overflow: ellipsis; }
-.live-tbl th.nm { text-align: left; max-width: 12em; overflow: hidden; text-overflow: ellipsis; }
+.live-tbl th.nm { text-align: left; max-width: 12em; overflow: hidden; text-overflow: ellipsis; position: sticky; left: 0; z-index: 1; background: var(--surface); box-shadow: 1px 0 0 var(--line); }
+.live-tbl thead th.nm, .live-tbl tfoot th.nm { background: var(--surface-2); }
+.sort-sel { display: inline-flex; align-items: center; gap: 6px; }
+.sort-sel select { font: inherit; font-size: .85rem; padding: 3px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.qt-ext { align-items: center; gap: 6px; margin-top: 6px; }
 .live-tbl td.ok { background: var(--ok-soft); color: var(--ok); font-weight: 800; }
 .live-tbl td.ng { background: var(--bad-soft); color: var(--bad); font-weight: 800; }
 .live-tbl td.num { font-family: var(--mono); }

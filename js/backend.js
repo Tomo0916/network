@@ -153,6 +153,7 @@ export async function updateClass(id, patch) { const sb = await client(); return
 export async function startLive(id, min) { const sb = await client(); return pinged(id, check(await sb.rpc('net_start_live', { p_class: id, p_min: min }))); }
 export async function stopLive(id) { const sb = await client(); return pinged(id, check(await sb.rpc('net_stop_live', { p_class: id }))); }
 export async function startQuick(id, quick, min) { const sb = await client(); return pinged(id, check(await sb.rpc('net_start_quick', { p_class: id, p_quick: quick, p_min: min }))); }
+export async function extendQuick(id, min) { const sb = await client(); return pinged(id, check(await sb.rpc('net_extend_quick', { p_class: id, p_min: min }))); }
 export async function stopQuick(id) { const sb = await client(); return pinged(id, check(await sb.rpc('net_stop_quick', { p_class: id }))); }
 export async function deleteClass(id) { const sb = await client(); check(await sb.from('net_classes').delete().eq('id', id)); }
 export async function members(classId) { const sb = await client(); return check(await sb.from('net_members').select('user_id, nickname, joined_at').eq('class_id', classId).order('joined_at')); }

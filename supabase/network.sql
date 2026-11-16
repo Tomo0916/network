@@ -349,3 +349,4 @@ begin
 end $$;
 
 -- learning records per member: see network-progress.sql (run it too)
+-- Extending a running quick test: see network-quick-extend.sql

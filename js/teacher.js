@@ -60,7 +60,7 @@ function render() {
   document.body.classList.toggle('teacher', true);
   const body = { present: presentHTML, share: shareHTML, test: testHTML, class: classPageHTML }[S.route]();
   document.title = `${T('t.' + S.route)} · ${T('t.title')}`;
-  app.innerHTML = headerHTML() + body;
+  keepScroll(() => { app.innerHTML = headerHTML() + body; });
   if (S.route === 'share') drawQR();
   if (S.route === 'class' && C.cur) drawQR('cqr', joinURL(C.cur));
 }
@@ -187,7 +187,7 @@ function testHTML() {
  * C.cur = the open class; C.all = every answer of the class; C.view = what the live table shows:
  *   'task' (the assignment) or a quick test's id. In a table the first answer per question counts.
  * ========================================================= */
-const C = { all: [], view: 'task', qdraft: { range: 'all', mode: 'mix', n: 5, min: 5 }, slide: null, id: null, ready: false, session: null, teacher: null, classes: null, cur: null, members: [], pins: {}, att: [], err: '', busy: false, draft: null, hide: false, unwatch: null, status: '' };
+const C = { sort: (() => { try { return localStorage.getItem('netw.tcSort') || 'join'; } catch (e) { return 'join'; } })(), all: [], view: 'task', qdraft: { range: 'all', mode: 'mix', n: 5, min: 5 }, slide: null, id: null, ready: false, session: null, teacher: null, classes: null, cur: null, members: [], pins: {}, att: [], err: '', busy: false, draft: null, hide: false, unwatch: null, status: '' };
 const pad = n => String(n).padStart(2, '0');
 const hhmm = iso => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 const newSeed = () => { const d = new Date(); return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${Math.random().toString(36).slice(2, 5)}`; };
@@ -309,7 +309,7 @@ function classViewHTML() {
       ${quickCardHTML()}
     </div>
     <section class="card panel tc-table-card">
-      <div class="tc-table-head"><h2>${I.eye} ${H('tc.table')}</h2>${rtStatus()}${viewSelect()}
+      <div class="tc-table-head"><h2>${I.eye} ${H('tc.table')}</h2>${rtStatus()}${viewSelect()}${sortSelect()}
         <button class="btn btn-ghost btn-sm" data-act="tcSlide" data-p="worst" ${viewData() ? '' : 'disabled'}>${I.screen}${H('tc.mistakes')}</button>
         <label class="chk"><input type="checkbox" data-act="tcHide" ${C.hide ? 'checked' : ''}><span>${H('tc.hide')}</span></label></div>
       <div id="live-table">${tableHTML()}</div>
@@ -327,7 +327,7 @@ function viewSelect() {
   if (opts.length < 2) return '';
   return `<select class="view-sel" data-act="tcView">${opts.map(([v, l]) => `<option value="${esc(v)}" ${C.view === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
 }
-const QUICK_COUNTS = [5, 10, 15, 20], QUICK_MIN = [0, 3, 5, 10];
+const QUICK_COUNTS = [5, 10, 15, 20], QUICK_MIN = [0, 3, 5, 10, 15, 20, 30], QUICK_EXT = [1, 3, 5];
 function quickCardHTML() {
   const c = C.cur, q = c.quick, d = C.qdraft;
   const sel = (k, opts) => `<select data-q="${k}">${opts.map(([v, l]) => `<option value="${v}" ${String(d[k]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
@@ -336,6 +336,7 @@ function quickCardHTML() {
     return `<section class="card panel tc-quick on"><h2>${I.flag} ${H('cls.quick')}</h2>
       <p><b>${esc(rangeLabel(q.range))} · ${esc(T('quiz.m.' + q.mode))} · ${q.n}</b></p>
       <div class="qt-state" id="tc-qstate">${quickStateText(q)}</div>
+      ${q.end && !over ? `<div class="row-btns left qt-ext"><span class="muted small">${H('tc.quickExtend')}</span>${QUICK_EXT.map(m => `<button class="btn btn-ghost btn-sm" data-act="tcQuickExtend" data-min="${m}">+${m}${esc(T('tc.min'))}</button>`).join('')}</div>` : ''}
       <div class="row-btns left"><button class="btn ${over ? 'btn-primary' : 'btn-danger'}" data-act="tcQuickStop">${H(over ? 'tc.quickSave' : 'tc.quickStop')}</button></div>
       <p class="muted small">${H('tc.quickStopTip')}</p></section>`;
   }
@@ -417,16 +418,36 @@ function tableHTML() {
   const qs = vd.qs, f1 = firstAnswers(vd.att), first = {};
   for (const u in f1) { first[u] = {}; for (const p in f1[u]) first[u][p] = f1[u][p].ok; }
   if (!C.members.length) return `<p class="muted">${H('tc.noStudents')}</p>`;
-  const rows = C.members.map((m, i) => {
+  const stats = C.members.map((m, i) => {
     const u = first[m.user_id] || {};
     const done = Object.keys(u).length, ok = Object.values(u).filter(Boolean).length;
-    return `<tr><th class="nm">${C.hide ? '#' + (i + 1) : esc(m.nickname)}</th>${qs.map((q, p) => `<td class="${p in u ? (u[p] ? 'ok' : 'ng') : ''}">${p in u ? (u[p] ? '○' : '×') : ''}</td>`).join('')}<td class="num">${ok}/${done}</td><td class="num">${done === qs.length ? I.check : `${done}/${qs.length}`}</td></tr>`;
-  }).join('');
+    return { m, i, u, done, ok, rate: done ? ok / done : -1 };
+  });
+  const by = {
+    join: (a, b) => a.i - b.i,
+    name: (a, b) => a.m.nickname.localeCompare(b.m.nickname, 'ja') || a.i - b.i,
+    progress: (a, b) => b.done - a.done || b.ok - a.ok || a.i - b.i,
+    rate: (a, b) => b.rate - a.rate || b.done - a.done || a.i - b.i,
+    low: (a, b) => (a.done ? a.rate : 2) - (b.done ? b.rate : 2) || b.done - a.done || a.i - b.i
+  }[C.sort] || ((a, b) => a.i - b.i);
+  const pc = r => r < 0 ? '' : ` <span class="muted">${Math.round(r * 100)}%</span>`;
+  const rows = stats.slice().sort(by).map(({ m, i, u, done, ok, rate }) =>
+    `<tr><th class="nm">${C.hide ? '#' + (i + 1) : esc(m.nickname)}</th><td class="num">${done === qs.length ? I.check : `${done}/${qs.length}`}</td><td class="num">${ok}/${done}${pc(rate)}</td>${qs.map((q, p) => `<td class="${p in u ? (u[p] ? 'ok' : 'ng') : ''}">${p in u ? (u[p] ? '○' : '×') : ''}</td>`).join('')}</tr>`).join('');
   const rate = qs.map((q, p) => { const v = C.members.map(m => (first[m.user_id] || {})[p]).filter(x => x !== undefined); return v.length ? Math.round(v.filter(Boolean).length / v.length * 100) : null; });
   const head = qs.map((q, p) => { const w = WORD_BY_ID[q.id]; return `<th title="${esc(w.term)} · ${esc(T('quiz.' + q.type))}"><button class="qhead-btn" data-act="tcSlide" data-p="${p}"><span class="qn">${p + 1}</span><span class="qt">${esc(w.term)}</span></button></th>`; }).join('');
-  return `<div class="tbl-scroll"><table class="live-tbl"><thead><tr><th></th>${head}<th>${H('tc.right')}</th><th>${H('tc.progress')}</th></tr></thead>
+  const all = stats.reduce((a, x) => ({ ok: a.ok + x.ok, done: a.done + x.done }), { ok: 0, done: 0 });
+  return `<div class="tbl-scroll"><table class="live-tbl"><thead><tr><th class="nm"></th><th>${H('tc.progress')}</th><th>${H('tc.right')}</th>${head}</tr></thead>
     <tbody>${rows}</tbody>
-    <tfoot><tr><th>${H('tc.rate')}</th>${rate.map(r => `<td class="rate ${r === null ? '' : r < 50 ? 'low' : r < 80 ? 'mid' : 'high'}">${r === null ? '' : r + '%'}</td>`).join('')}<td></td><td></td></tr></tfoot></table></div>`;
+    <tfoot><tr><th class="nm">${H('tc.rate')}</th><td></td><td class="num">${all.done ? Math.round(all.ok / all.done * 100) + '%' : ''}</td>${rate.map(r => `<td class="rate ${r === null ? '' : r < 50 ? 'low' : r < 80 ? 'mid' : 'high'}">${r === null ? '' : r + '%'}</td>`).join('')}</tr></tfoot></table></div>`;
+}
+const SORTS = ['join', 'progress', 'rate', 'low', 'name'];
+const sortSelect = () => `<label class="sort-sel"><span class="muted small">${H('tc.sort')}</span><select data-act="tcSort">${SORTS.map(k => `<option value="${k}" ${C.sort === k ? 'selected' : ''}>${esc(T('tc.sort.' + k))}</option>`).join('')}</select></label>`;
+/* keep the table's scroll position when it is redrawn (new answers arrive all the time) */
+function keepScroll(fn) {
+  const el = document.querySelector('#live-table .tbl-scroll'), x = el ? el.scrollLeft : 0, y = el ? el.scrollTop : 0;
+  fn();
+  const nu = document.querySelector('#live-table .tbl-scroll');
+  if (nu && (x || y)) { nu.scrollLeft = x; nu.scrollTop = y; }
 }
 function membersHTML() {
   if (!C.members.length) return `<p class="muted">${H('tc.noStudents')}</p>`;
@@ -434,7 +455,7 @@ function membersHTML() {
     return `<li><b>${esc(m.nickname)}</b><span class="muted small">${p ? (p.locked ? H('tc.pinLocked') : p.has_pin ? H('tc.pinSet') : H('tc.pinNone')) : ''}</span>
       <button class="linkbtn" data-act="tcPin" data-u="${m.user_id}">${I.key}${H('tc.newPin')}</button><button class="linkbtn danger" data-act="tcRemove" data-u="${m.user_id}">${H('tc.remove')}</button></li>`; }).join('')}</ul>`;
 }
-const drawTable = () => { const el = document.getElementById('live-table'); if (el) el.innerHTML = tableHTML(); };
+const drawTable = () => keepScroll(() => { const el = document.getElementById('live-table'); if (el) el.innerHTML = tableHTML(); });
 const drawMembers = () => { const el = document.getElementById('members'); if (el) el.innerHTML = membersHTML(); };
 async function act(fn) {
   try { await fn(); } catch (e) { toast(stripTags(errText(e))); }
@@ -462,6 +483,11 @@ const classActions = {
   tcQuickStart() {
     const d = C.qdraft;
     act(async () => { keepRow(await BE.startQuick(C.cur.id, { range: d.range, mode: d.mode, n: Number(d.n) }, Number(d.min))); C.view = C.cur.quick.id; });
+  },
+  tcQuickExtend(el) {
+    const q = C.cur.quick;
+    if (!q || !q.end || Date.parse(q.end) < Date.now()) return;
+    act(async () => { keepRow(await BE.extendQuick(C.cur.id, Number(el.dataset.min))); toast(T('tc.quickExtended', { t: el.dataset.min + T('tc.min') })); });
   },
   tcQuickStop() {
     if (C.cur.quick && !(C.cur.quick.end && Date.parse(C.cur.quick.end) < Date.now()) && !confirm(T('tc.quickStopAsk'))) return;
@@ -501,6 +527,7 @@ document.addEventListener('change', e => {
   const el = e.target;
   if (el.matches('[data-act="tcHide"]')) { C.hide = el.checked; drawTable(); }
   if (el.matches('[data-act="tcView"]')) { C.view = el.value; drawTable(); }
+  if (el.matches('[data-act="tcSort"]')) { C.sort = el.value; try { localStorage.setItem('netw.tcSort', el.value); } catch (e) {} drawTable(); }
   if (el.dataset.q) { C.qdraft[el.dataset.q] = el.dataset.q === 'range' || el.dataset.q === 'mode' ? el.value : Number(el.value); render(); }
   if (el.matches('[data-act="tcOpen"]')) act(async () => keepRow(await BE.updateClass(C.cur.id, { open: el.checked })));
 });
