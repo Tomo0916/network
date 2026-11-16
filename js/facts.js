@@ -62,7 +62,25 @@ export const FACTS = [
     SEQ('fx.dDiscover', 'fx.dRequest', 'fx.dOffer', 'fx.dAck'),
     SEQ('fx.dOffer', 'fx.dDiscover', 'fx.dAck', 'fx.dRequest')] },
   { id: 'pingproto', word: 'ping', opts: [SEQ('w:icmp'), SEQ('w:arp'), SEQ('w:dhcp'), SEQ('w:nat')] },
-  { id: 'gwsame', word: 'gateway', opts: ['192.168.1.1', '192.168.2.1', '10.0.0.1', '192.168.1.255'] }
+  { id: 'gwsame', word: 'gateway', opts: ['192.168.1.1', '192.168.2.1', '10.0.0.1', '192.168.1.255'] },
+  { id: 'osilayers', word: 'osi', opts: ['7', '4', '5', '8'] },
+  { id: 'tcpiplayers', word: 'tcpip', opts: ['4', '7', '3', '5'] },
+  { id: 'osiorder', word: 'osi', opts: [SEQ('fx.osi1', 'fx.osi2', 'fx.osi3', 'fx.osi4'), SEQ('fx.osi2', 'fx.osi1', 'fx.osi3', 'fx.osi4'),
+    SEQ('fx.osi1', 'fx.osi3', 'fx.osi2', 'fx.osi4'), SEQ('fx.osi4', 'fx.osi3', 'fx.osi2', 'fx.osi1')] },
+  { id: 'byte', word: 'bit', opts: ['8', '4', '16', '1024'] },
+  { id: 'dupcoll', word: 'fullduplex', opts: [{ k: 'fx.collNone' }, { k: 'fx.collMore' }, { k: 'fx.collSame' }, { k: 'fx.collAlways' }] },
+  { id: 'classarange', word: 'ipclass', opts: ['1–126', '128–191', '192–223', '224–239'] },
+  { id: 'classcmask', word: 'ipclass', opts: ['255.255.255.0', '255.255.0.0', '255.0.0.0', '255.255.255.255'] },
+  { id: 'loopbackaddr', word: 'loopback', opts: ['127.0.0.1', '192.168.0.1', '0.0.0.0', '255.255.255.255'] },
+  { id: 'ripmax', word: 'rip', opts: ['15', '16', '255', '30'] },
+  { id: 'tracertproto', word: 'tracert', opts: [SEQ('w:icmp'), SEQ('w:arp'), SEQ('w:dhcp'), SEQ('w:dns')] },
+  { id: 'cidr26', word: 'cidr', opts: ['255.255.255.192', '255.255.255.128', '255.255.255.224', '255.255.255.0'] },
+  { id: 'handshakeorder', word: 'handshake', opts: ['SYN → SYN+ACK → ACK', 'SYN → ACK → SYN+ACK', 'ACK → SYN → SYN+ACK', 'SYN+ACK → SYN → ACK'] },
+  { id: 'httpport', word: 'wellknown', opts: ['80', '443', '53', '25'] },
+  { id: 'httpsport', word: 'wellknown', opts: ['443', '80', '22', '21'] },
+  { id: 'dnsport', word: 'wellknown', opts: ['53', '80', '443', '67'] },
+  { id: 'wellknownrange', word: 'wellknown', opts: ['0–1023', '1024–49151', '49152–65535', '0–255'] },
+  { id: 'portbits', word: 'port', opts: ['16', '8', '32', '48'] }
 ];
 export const FACT_BY_ID = Object.fromEntries(FACTS.map(f => [f.id, f]));
 export const factsOf = wordId => FACTS.filter(f => f.word === wordId);

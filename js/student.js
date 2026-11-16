@@ -6,7 +6,7 @@
  *          #/quiz         4-choice quiz      #/sort    sorting game
  *          #/review       today's review     #/demos/<id>  animations
  *          #/class        join a class       #/task    the class assignment   #/quick  the quick test
- * URL options:  ?lang=vi   ?range=lesson-2   ?present=1   ?class=<class code>
+ * URL options:  ?lang=vi   ?range=lesson-13   ?present=1   ?class=<class code>
  * Progress is stored by word id, so switching language never touches it.
  * ========================================================= */
 import { LANGS, loadLang, detectLang, htmlLang, t, th, esc } from './i18n.js';

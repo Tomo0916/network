@@ -49,7 +49,9 @@ for (const w of WORDS) (w.related || []).forEach(r => {
   else if (!ids.has(r)) err(`${w.id}: related "${r}" is not a word id`);
 });
 GROUPS.forEach(g => { if (!WORDS.some(w => w.group === g.id)) warn(`group "${g.id}" has no words`); });
-LESSONS.forEach(n => { if (!WORDS.some(w => w.lesson === n)) warn(`lesson ${n} has no words`); });
+// overview / summary lessons may have no words of their own (they are left out of the range menu)
+const NO_WORD_LESSONS = [2, 44];
+LESSONS.forEach(n => { if (!NO_WORD_LESSONS.includes(n) && !WORDS.some(w => w.lesson === n)) warn(`lesson ${n} has no words`); });
 DEMOS.forEach(d => { if (!fs.existsSync(path.join(root, 'js/demos', d + '.js'))) err(`demo "${d}": js/demos/${d}.js is missing`); });
 const sceneIds = new Set();
 for (const sc of SCENES) {
