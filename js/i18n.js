@@ -26,6 +26,19 @@ export async function loadLang(code) {
   return dicts[code];
 }
 export function hasLang(code) { return !!dicts[code]; }
+
+/* The textbook pages keep their texts apart from the screens' texts, one file per lesson and language:
+ *   text/<code>/<lesson>.js   (keys ls.<lesson>.*)      text/<code>/fig.js   (labels in the diagrams, fg.*)
+ * They are loaded only when a lesson is opened. A missing file (not translated yet) falls back to English. */
+const textLoaded = new Set();
+export async function loadText(code, part) {
+  const id = code + '/' + part;
+  if (textLoaded.has(id)) return;
+  await loadLang(code);
+  try { Object.assign(dicts[code], (await import(`../text/${code}/${part}.js`)).default); } catch (e) { /* not there yet */ }
+  textLoaded.add(id);
+}
+export const textReady = (code, part) => textLoaded.has(code + '/' + part);
 export function dict(code) { return dicts[code] || {}; }
 
 export function detectLang(saved) {

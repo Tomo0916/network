@@ -10,10 +10,10 @@
  * URL options:  ?lang=vi   ?range=lesson-13   ?present=1   ?class=<class code>
  * Progress is stored by word id, so switching language never touches it.
  * ========================================================= */
-import { LANGS, loadLang, detectLang, htmlLang, t, th, esc } from './i18n.js';
+import { LANGS, loadLang, loadText, textReady, detectLang, htmlLang, t, th, esc } from './i18n.js';
 import { WORDS, WORD_BY_ID } from './words.js';
-import { GROUP_BY_ID, DEMOS, CHAPTERS } from './groups.js';
-import { LESSON_PAGES, hasPage, termRefs, PAGE_LIST, prevPage, nextPage } from './lessons.js';
+import { GROUP_BY_ID, DEMOS, CHAPTERS, LESSONS } from './groups.js';
+import { LESSON_PAGES, hasPage, termRefs, PAGE_LIST } from './lessons.js';
 import { FIGURES } from './figures.js';
 import { RANGES, RANGE_SETS, isRange, wordsIn, groupsIn, makeQuiz, makeSort, poolSize, taskQuiz, taskKey, qidOf } from './quiz.js';
 import { FACT_BY_ID } from './facts.js';
@@ -61,7 +61,9 @@ const save = () => saveProgress(S.progress);
 /* ---------- terms ---------- */
 const speakBtn = w => speakBtnOf(w, T('btn.listen'));
 const groupTag = g => `<span class="gtag" style="--gc:var(--g-${g.id})">${H('g.' + g.id)}</span>`;
-const words = () => wordsIn(S.settings.range);
+/* the range in use: a lesson's own words on its tabs (#/lesson/<n>/words …), otherwise the chosen range */
+const curRange = () => S.route.scope || S.settings.range;
+const words = () => wordsIn(curRange());
 
 /* ---------- range ---------- */
 const rangeLabel = r => rangeLabelOf(r, T);
@@ -74,15 +76,22 @@ function rangeSelect() {
 /* ---------- routing ---------- */
 function parseRoute() {
   const h = location.hash.replace(/^#\/?/, '').split('/');
-  if (['words', 'cards', 'quiz', 'sort', 'review', 'class', 'task', 'quick'].includes(h[0])) return { view: h[0] };
+  if (['words', 'cards', 'quiz', 'sort', 'review', 'class', 'task', 'quick', 'practice'].includes(h[0])) return { view: h[0] };
   if (h[0] === 'demos') return { view: 'demos', id: DEMOS.includes(h[1]) ? h[1] : DEMOS[0] };
   if (h[0] === 'text') return { view: 'text' };
-  if (h[0] === 'lesson' && hasPage(Number(h[1]))) return { view: 'lesson', n: Number(h[1]) };
+  /* a lesson: its explanation (if written) and its own words, cards and quiz */
+  const n = Number(h[1]);
+  if (h[0] === 'lesson' && LESSON_NAV.includes(n)) {
+    const tab = ['words', 'cards', 'quiz'].includes(h[2]) ? h[2] : hasPage(n) ? 'read' : 'words';
+    return { view: 'lesson', n, tab, scope: tab === 'read' ? null : 'lesson-' + n };
+  }
   return { view: 'home' };
 }
 window.addEventListener('hashchange', () => {
+  const before = S.route.scope || null;
   S.route = parseRoute();
   clearAuto();
+  if ((S.route.scope || null) !== before) { S.cards.i = 0; S.cards.flipped = false; S.sort = null; S.query = ''; }
   if (S.route.view === 'review') S.quiz = null;
   render(); window.scrollTo(0, 0);
 });
@@ -91,7 +100,7 @@ window.addEventListener('hashchange', () => {
 function render() {
   applySettings(S.settings, htmlLang(L()));
   const v = S.route.view;
-  const body = { home: homeHTML, words: wordsHTML, cards: cardsHTML, quiz: quizHTML, review: quizHTML, task: quizHTML, sort: sortHTML, demos: demosHTML, class: classHTML, quick: quickHTML, text: textHTML, lesson: lessonHTML }[v]();
+  const body = { home: homeHTML, words: wordsHTML, cards: cardsHTML, quiz: quizHTML, review: quizHTML, task: quizHTML, sort: sortHTML, demos: demosHTML, class: classHTML, quick: quickHTML, text: textHTML, lesson: lessonView, practice: practiceHTML }[v]();
   document.title = (v === 'home' ? '' : (v === 'lesson' ? T('lesson.' + S.route.n) : T(v === 'task' ? 'cls.task' : v === 'class' ? 'cls.title' : v === 'quick' ? 'cls.quick' : 'nav.' + v)) + ' · ') + T('app.name');
   /* an animation keeps running (and keeps its state, e.g. a switch's MAC table) when the page is drawn again
      for the same page and language, e.g. after a class update */
@@ -106,18 +115,19 @@ function render() {
     el.dataset.demoKey = key;
     if (v === 'demos') mountDemo(id); else mountDemoIn(el, id, JSON.parse(el.dataset.opts || '{}'));
   });
-  if (v === 'quiz' || v === 'review' || v === 'task') afterQuizRender();
+  if (v === 'quiz' || v === 'review' || v === 'task' || (v === 'lesson' && S.route.tab === 'quiz')) afterQuizRender();
   if (v === 'quick') afterQuickRender();
   if (v === 'words') { const s = document.getElementById('search'); if (s && S.query) { s.focus(); s.setSelectionRange(S.query.length, S.query.length); } }
 }
 function headerHTML() {
-  const due = dueWords(S.progress).length, v = S.route.view === 'lesson' ? 'text' : S.route.view;
+  const due = dueWords(S.progress).length, rv = S.route.view;
+  const v = rv === 'lesson' ? 'text' : ['cards', 'quiz', 'sort', 'review'].includes(rv) ? 'practice' : rv;
   const a = (r, icon, key, extra = '') => `<a href="#/${r}" class="${v === (r.split('/')[0] || 'home') ? 'on' : ''}" title="${esc(T(key))}">${icon}<span>${H(key)}</span>${extra}</a>`;
   return `<header class="topbar"><div class="topbar-in">
     <a class="brand" href="#/"><span class="brand-mark">${I.net}</span><span class="brand-name">${H('app.name')}</span></a>
     <nav class="topnav">
-      ${a('', I.home, 'nav.home')}${a('text', I.book, 'nav.text')}${a('words', I.list, 'nav.words')}${a('cards', I.cards, 'nav.cards')}${a('quiz', I.quiz, 'nav.quiz')}${a('sort', I.sort, 'nav.sort')}
-      ${a('review', I.repeat, 'nav.review', due ? `<b class="badge">${due}</b>` : '')}${a('demos/' + DEMOS[0], I.play, 'nav.demos')}
+      ${a('', I.home, 'nav.home')}${a('text', I.book, 'nav.text')}${a('words', I.list, 'nav.words')}
+      ${a('practice', I.quiz, 'nav.practice', due ? `<b class="badge">${due}</b>` : '')}${a('demos/' + DEMOS[0], I.play, 'nav.demos')}
       ${S.cls && S.klass && S.klass.task ? a('task', I.flag, 'cls.task', taskDone() ? '' : '<b class="badge dot"></b>') : ''}
     </nav>
     <div class="topbar-right">
@@ -129,7 +139,7 @@ function headerHTML() {
 function footerHTML() {
   return `<footer class="foot"><span>${H('foot.saved')}</span><span><a href="teacher.html">${H('foot.teacher')}</a> · <a href="https://github.com/Tomo0916/network">GitHub</a></span></footer>`;
 }
-const pageHead = (key, sub) => `<div class="page-head"><div><h1 class="page-title">${H(key)}</h1>${sub ? `<p class="muted">${sub}</p>` : ''}</div>${rangeSelect()}</div>`;
+const pageHead = (key, sub) => S.route.scope ? '' : `<div class="page-head"><div><h1 class="page-title">${H(key)}</h1>${sub ? `<p class="muted">${sub}</p>` : ''}</div>${rangeSelect()}</div>`;
 
 /* ---------- home ---------- */
 function homeHTML() {
@@ -484,7 +494,7 @@ function wordSections(ws) {
     const key = w => (w.yomi || w.term).replace(/[（(].*$/, '');
     return [{ title: '', words: [...ws].sort((a, b) => key(a).localeCompare(key(b), 'ja')) }];
   }
-  if (order === 'group') return groupsIn(S.settings.range).map(g => ({ g, title: `${H('g.' + g.id)} <span class="layer">${H('layer.' + g.layer)}</span>`, words: ws.filter(w => w.group === g.id) }));
+  if (order === 'group') return groupsIn(curRange()).map(g => ({ g, title: `${H('g.' + g.id)} <span class="layer">${H('layer.' + g.layer)}</span>`, words: ws.filter(w => w.group === g.id) }));
   return CHAPTERS.map(c => ({ ch: c.n, title: `<span class="ch-no">${c.n}</span>${H('ch.' + c.n)}`,
     words: ws.filter(w => w.lesson >= c.from && w.lesson <= c.to).sort((a, b) => a.lesson - b.lesson) }));
 }
@@ -517,10 +527,10 @@ function wordsHTML() {
     <div class="wl-ctl">
       <label class="search">${I.search}<input id="search" type="search" value="${esc(S.query)}" placeholder="${esc(T('words.search'))}" aria-label="${esc(T('words.search'))}"></label>
       <div class="seg small-seg" role="group" aria-label="${esc(T('words.view'))}">${seg('wordView', 'table', 'words.viewTable', 'table')}${seg('wordView', 'cards', 'words.viewCards', 'table')}</div>
-      <div class="seg small-seg" role="group" aria-label="${esc(T('words.order'))}">${seg('wordOrder', 'lesson', 'words.byLesson', 'lesson')}${seg('wordOrder', 'group', 'words.byGroup', 'lesson')}${seg('wordOrder', 'kana', 'words.byKana', 'lesson')}</div>
+      ${S.route.scope ? '' : `<div class="seg small-seg" role="group" aria-label="${esc(T('words.order'))}">${seg('wordOrder', 'lesson', 'words.byLesson', 'lesson')}${seg('wordOrder', 'group', 'words.byGroup', 'lesson')}${seg('wordOrder', 'kana', 'words.byKana', 'lesson')}</div>`}
       <button class="btn btn-ghost btn-sm" data-act="printWords">${I.print}${H('words.print')}</button>
     </div>
-    <p class="wl-print-head">${H('app.name')} — ${esc(rangeLabel(S.settings.range))}</p>
+    <p class="wl-print-head">${H('app.name')} — ${esc(rangeLabel(curRange()))}</p>
     <div id="wlist">${wordListHTML()}</div></main>`;
 }
 
@@ -568,7 +578,7 @@ const quizOpts = () => ({ listen: false, weight: wordWeight });
 function startQuiz(review, mode = 'mix') {
   const ids = review ? dueWords(S.progress) : words().map(w => w.id);
   const n = review ? 10 : Number(S.settings.quizN || 10);
-  S.quiz = { review, mode, list: makeQuiz(ids, n, review ? 'mix' : mode, quizOpts()), i: 0, score: 0, ans: null, missed: [], state: 'q' };
+  S.quiz = { review, mode, scope: review ? null : S.route.scope || null, list: makeQuiz(ids, n, review ? 'mix' : mode, quizOpts()), i: 0, score: 0, ans: null, missed: [], state: 'q' };
   S.quiz.spoken = -1;
 }
 function quizStartHTML() {
@@ -634,6 +644,8 @@ function quizHTML() {
   const review = S.route.view === 'review', task = S.route.view === 'task';
   if (task) { const t = taskHTMLorStart(); if (t) return t; }
   else if (S.quiz && S.quiz.task) S.quiz = null;
+  /* a quiz belongs to its range: a lesson's quiz is not shown on the general quiz page and the other way round */
+  if (!task && !review && S.quiz && !S.quiz.practice && (S.quiz.scope || null) !== (S.route.scope || null)) S.quiz = null;
   if (review && !S.quiz) startQuiz(true);
   const Q = S.quiz;
   if (review && !Q.list.length) {
@@ -704,7 +716,7 @@ function answer(id) {
 
 /* ---------- sorting game ---------- */
 function sortHTML() {
-  const R = S.sort, gs = groupsIn(S.settings.range);
+  const R = S.sort, gs = groupsIn(curRange());
   if (!R || R.state === 'start') {
     return `<main class="wrap narrow">${pageHead('sort.title')}<section class="card panel">
       <p>${bi('sort.sub')}</p><div class="glist">${gs.map(groupTag).join('')}</div>
@@ -767,15 +779,69 @@ function textHTML() {
       ${Array.from({ length: c.to - c.from + 1 }, (_, i) => c.from + i).map(n => {
         const ws = lessonWords(n), page = hasPage(n);
         const inner = `<span class="toc-n">${H('range.lesson', { n })}</span><span class="toc-t">${H('lesson.' + n)}</span>`;
-        return `<li class="${page ? 'has-page' : ''}">${page ? `<a href="#/lesson/${n}">${inner}${readMap()[n] ? `<span class="tag ok">${I.check}${H('lsn.done')}</span>` : `<span class="tag accent">${I.book}${H('lsn.read')}</span>`}</a>` : `<div>${inner}${ws.length ? `<button class="linkbtn" data-act="lessonQuiz" data-n="${n}">${I.quiz}${H('lsn.quizShort', { n: ws.length })}</button>` : ''}</div>`}</li>`;
+        const tag = page ? (readMap()[n] ? `<span class="tag ok">${I.check}${H('lsn.done')}</span>` : `<span class="tag accent">${I.book}${H('lsn.read')}</span>`) : '';
+        return `<li class="${page ? 'has-page' : ''}">${LESSON_NAV.includes(n) ? `<a href="#/lesson/${n}">${inner}${tag}${ws.length ? `<span class="tag">${I.list}${ws.length}</span>` : ''}</a>` : `<div>${inner}</div>`}</li>`;
       }).join('')}</ol></section>`).join('')}
   </main>`;
 }
+/* the lesson's texts are loaded on first use (reading language, English as the fallback, and the second language) */
+function lessonTextReady(n) {
+  const langs = [...new Set([L(), 'en', S.settings.second].filter(Boolean))], parts = [String(n), 'fig'];
+  if (langs.every(l => parts.every(p => textReady(l, p)))) return true;
+  Promise.all(langs.flatMap(l => parts.map(p => loadText(l, p)))).then(() => { if (S.route.view === 'lesson' && S.route.n === n) render(); });
+  return false;
+}
+/* lessons that can be opened: an explanation is written, or the lesson has words */
+const LESSON_NAV = LESSONS.filter(n => hasPage(n) || wordsIn('lesson-' + n).length);
+const navPrev = n => LESSON_NAV.filter(x => x < n).pop(), navNext = n => LESSON_NAV.find(x => x > n);
+/* the top of every lesson tab: where we are, the lesson's title, the tabs, the way to the lesson before / after */
+function lessonHeader(n, tab) {
+  const ch = CHAPTERS.find(c => n >= c.from && n <= c.to), pv = navPrev(n), nx = navNext(n), ws = lessonWords(n);
+  const sub = tab === 'read' ? '' : '/' + tab;
+  const go = m => `#/lesson/${m}${hasPage(m) || tab !== 'read' ? sub : ''}`;
+  const tabA = (id, icon, key, extra = '') => `<a class="lsn-tab ${tab === id ? 'on' : ''}" href="#/lesson/${n}${id === 'read' ? '' : '/' + id}">${icon}<span>${H(key)}</span>${extra}</a>`;
+  return `<div class="wrap lsn lsn-shell ${tab === 'words' ? 'wide' : tab === 'read' ? '' : 'narrow'}">
+    <div class="lsn-top"><nav class="crumb"><a href="#/text">${H('lsn.title')}</a> › <span>${H('ch.' + ch.n)}</span></nav>
+      <span class="lsn-arrows">${pv ? `<a class="icon-btn" href="${go(pv)}" title="${esc(T('lsn.prev'))}" aria-label="${esc(T('lsn.prev'))}">${I.prev}</a>` : ''}<span class="mono small">${LESSON_NAV.indexOf(n) + 1} / ${LESSON_NAV.length}</span>${nx ? `<a class="icon-btn" href="${go(nx)}" title="${esc(T('lsn.next'))}" aria-label="${esc(T('lsn.next'))}">${I.next}</a>` : ''}</span></div>
+    <header class="lsn-head"><span class="lsn-no">${H('range.lesson', { n })}</span><h1>${bi('lesson.' + n)}</h1></header>
+    <nav class="lsn-tabs" aria-label="${esc(T('lesson.' + n))}">
+      ${hasPage(n) ? tabA('read', I.book, 'lsn.tabRead') : `<span class="lsn-tab off" title="${esc(T('lsn.soon'))}">${I.book}<span>${H('lsn.tabRead')}</span></span>`}
+      ${ws.length ? tabA('words', I.list, 'lsn.tabWords', `<b class="badge soft">${ws.length}</b>`) + tabA('cards', I.cards, 'lsn.tabCards') + tabA('quiz', I.quiz, 'lsn.tabQuiz') : ''}
+    </nav>
+    ${tab !== 'read' && !hasPage(n) ? `<p class="muted small lsn-soon">${I.bulb}${H('lsn.soon')}</p>` : ''}
+  </div>`;
+}
+function lessonView() {
+  const { n, tab } = S.route;
+  if (tab === 'read') return lessonHeader(n, tab) + lessonHTML();
+  return lessonHeader(n, tab) + { words: wordsHTML, cards: cardsHTML, quiz: quizHTML }[tab]() + lessonPN(n, tab);
+}
+/* bottom: the lesson before / after (same tab) */
+function lessonPN(n, tab) {
+  const pv = navPrev(n), nx = navNext(n), sub = tab === 'read' ? '' : '/' + tab;
+  const go = m => `#/lesson/${m}${hasPage(m) || tab !== 'read' ? sub : ''}`;
+  return `<div class="wrap lsn"><nav class="lsn-pn">
+      ${pv ? `<a class="card lsn-pn-a prev" href="${go(pv)}"><span class="muted small">${I.prev}${H('lsn.prev')}</span><b>${H('range.lesson', { n: pv })} ${H('lesson.' + pv)}</b></a>` : '<span></span>'}
+      ${nx ? `<a class="card lsn-pn-a next" href="${go(nx)}"><span class="muted small">${H('lsn.next')}${I.next}</span><b>${H('range.lesson', { n: nx })} ${H('lesson.' + nx)}</b></a>` : '<span></span>'}
+    </nav>
+    <nav class="lsn-nav"><a class="btn btn-ghost" href="#/text">${I.list}${H('lsn.toc')}</a><span class="muted small">${H('lsn.keys')}</span></nav></div>`;
+}
+/* 練習: the four ways to practise with the chosen range */
+function practiceHTML() {
+  const due = dueWords(S.progress).length;
+  const mode = (r, icon, key, sub, extra = '') => `<a class="card mode" href="#/${r}"><span class="mode-icon">${icon}</span><span><b>${H(key)}${extra}</b><span class="muted">${bi(sub)}</span></span>${I.next}</a>`;
+  return `<main class="wrap">${pageHead('nav.practice', bi('practice.sub'))}
+    <section class="modes">
+      ${mode('cards', I.cards, 'nav.cards', 'mode.cards')}
+      ${mode('quiz', I.quiz, 'nav.quiz', 'mode.quiz')}
+      ${mode('sort', I.sort, 'nav.sort', 'mode.sort')}
+      ${mode('review', I.repeat, 'nav.review', 'review.sub', due ? ` <span class="badge">${due}</span>` : '')}
+    </section></main>`;
+}
 function lessonHTML() {
+  if (!lessonTextReady(S.route.n)) return `<main class="wrap lsn"><div class="loading"><div class="spinner"></div></div></main>`;
   const n = S.route.n, blocks = LESSON_PAGES[n], k = key => `ls.${n}.${key}`;
   markRead(n);
-  const pv = prevPage(n), nx = nextPage(n);
-  const ch = CHAPTERS.find(c => n >= c.from && n <= c.to);
   const ws = lessonWords(n);
   const refs = [...new Set(blocks.flatMap(b => ['lead', 'p'].filter(f => b[f]).flatMap(f => termRefs(t(k(b[f]), L())))))].filter(id => WORD_BY_ID[id] && !ws.some(w => w.id === id));
   let fig = 0;
@@ -790,21 +856,13 @@ function lessonHTML() {
   }).join('');
   const tcard = w => `<button class="lsn-term card" data-act="termPop" data-id="${w.id}" style="--gc:var(--g-${w.group})"><span class="term-row"><span>${termHTML(w)}${enName(w)}</span></span><span class="lsn-term-d">${bi(`w.${w.id}.desc`)}</span></button>`;
   return `<main class="wrap lsn">
-    <div class="lsn-top"><nav class="crumb"><a href="#/text">${H('lsn.title')}</a> › <span>${H('ch.' + ch.n)}</span></nav>
-      <span class="lsn-arrows">${pv ? `<a class="icon-btn" href="#/lesson/${pv}" title="${esc(T('lsn.prev'))}" aria-label="${esc(T('lsn.prev'))}">${I.prev}</a>` : ''}<span class="mono small">${PAGE_LIST.indexOf(n) + 1} / ${PAGE_LIST.length}</span>${nx ? `<a class="icon-btn" href="#/lesson/${nx}" title="${esc(T('lsn.next'))}" aria-label="${esc(T('lsn.next'))}">${I.next}</a>` : ''}</span></div>
-    <header class="lsn-head"><span class="lsn-no">${H('range.lesson', { n })}</span><h1>${bi('lesson.' + n)}</h1></header>
     <p class="lsn-tip muted">${I.bulb}${H('lsn.tapTip')}</p>
     ${body}
     <section class="lsn-terms"><h2>${H('lsn.terms')}</h2><div class="lsn-tgrid">${ws.map(tcard).join('')}</div>
       ${refs.length ? `<h3>${H('lsn.related')}</h3><div class="lsn-tgrid">${refs.map(id => tcard(WORD_BY_ID[id])).join('')}</div>` : ''}</section>
     <div class="lsn-cta card"><div><b>${H('lsn.quizTitle')}</b><p class="muted">${bi('lsn.quizSub', { n: ws.length })}</p></div>
-      <button class="btn btn-primary" data-act="lessonQuiz" data-n="${n}">${I.quiz}${H('lsn.quizGo')}${I.next}</button></div>
-    <nav class="lsn-pn">
-      ${pv ? `<a class="card lsn-pn-a prev" href="#/lesson/${pv}"><span class="muted small">${I.prev}${H('lsn.prev')}</span><b>${H('range.lesson', { n: pv })} ${H('lesson.' + pv)}</b></a>` : '<span></span>'}
-      ${nx ? `<a class="card lsn-pn-a next" href="#/lesson/${nx}"><span class="muted small">${H('lsn.next')}${I.next}</span><b>${H('range.lesson', { n: nx })} ${H('lesson.' + nx)}</b></a>` : '<span></span>'}
-    </nav>
-    <nav class="lsn-nav"><a class="btn btn-ghost" href="#/text">${I.list}${H('lsn.toc')}</a><span class="muted small">${H('lsn.keys')}</span></nav>
-  </main>`;
+      <a class="btn btn-primary" href="#/lesson/${n}/quiz">${I.quiz}${H('lsn.quizGo')}${I.next}</a></div>
+  </main>${lessonPN(n, 'read')}`;
 }
 /* which lessons were read, and the last one (for "continue reading") */
 const readMap = () => Store.get('netw.read', {});
@@ -815,8 +873,8 @@ function textEntryHTML(onToc) {
   const last = Store.get('netw.lastLesson', null), read = readMap();
   const cont = hasPage(last) ? last : PAGE_LIST[0];
   const nRead = PAGE_LIST.filter(n => read[n]).length;
-  const chips = CHAPTERS.map(c => { const ps = PAGE_LIST.filter(n => n >= c.from && n <= c.to); return ps.length ? `<div class="tx-ch"><span class="ch-no">${c.n}</span>
-    <span class="tx-chips">${ps.map(n => `<a class="tx-chip ${read[n] ? 'read' : ''} ${n === last ? 'last' : ''}" href="#/lesson/${n}" title="${esc(T('lesson.' + n))}">${n}</a>`).join('')}</span></div>` : ''; }).join('');
+  const chips = CHAPTERS.map(c => { const ps = LESSON_NAV.filter(n => n >= c.from && n <= c.to); return ps.length ? `<div class="tx-ch"><span class="ch-no">${c.n}</span>
+    <span class="tx-chips">${ps.map(n => `<a class="tx-chip ${hasPage(n) ? 'page' : ''} ${read[n] ? 'read' : ''} ${n === last ? 'last' : ''}" href="#/lesson/${n}" title="${esc(T('lesson.' + n))}">${n}</a>`).join('')}</span></div>` : ''; }).join('');
   return `<section class="card tx-entry">
     <div class="tx-head">${I.book}<div><b>${H(onToc ? 'lsn.title' : 'lsn.homeTitle')}</b><span class="muted small">${bi('lsn.homeSub')} · ${H('lsn.readN', { n: nRead })}</span></div></div>
     <a class="tx-cont" href="#/lesson/${cont}"><span class="muted small">${H(hasPage(last) ? 'lsn.continue' : 'lsn.start')}</span><b>${H('range.lesson', { n: cont })} ${H('lesson.' + cont)}</b>${I.next}</a>
@@ -852,7 +910,7 @@ const actions = {
   toggleKnown(el) { const id = el.dataset.id; if (S.progress.known[id]) delete S.progress.known[id]; else S.progress.known[id] = Date.now(); save(); const on = !!S.progress.known[id]; el.classList.toggle('on', on); el.setAttribute('aria-pressed', on); },
   printWords() { window.print(); },
   goLesson(el) { closeModal(); location.hash = '#/lesson/' + el.dataset.n; },
-  lessonQuiz(el) { S.settings.range = 'lesson-' + el.dataset.n; saveSettings(S.settings); S.quiz = null; location.hash = '#/quiz'; },
+  lessonQuiz(el) { S.quiz = null; location.hash = '#/lesson/' + el.dataset.n + '/quiz'; },
   qtPractice(el) { startQuickPractice(el.dataset.id, el.dataset.which); },
   qtPracticeAgain() { const Q = S.quiz; if (Q && Q.practice) { Q.list = shuffle(Q.list.map(x => ({ ...x, opts: shuffle([...x.opts]) }))); Object.assign(Q, { i: 0, score: 0, ans: null, missed: [], state: 'q', spoken: -1 }); render(); window.scrollTo(0, 0); } },
   quizStart(el) { startQuiz(S.route.view === 'review', el.dataset.mode || 'mix'); render(); },
@@ -917,17 +975,18 @@ document.addEventListener('input', e => {
 document.addEventListener('keydown', e => {
   if (document.getElementById('modal') || e.target.closest('input, select, textarea')) return;
   const v = S.route.view;
-  if ((v === 'quiz' || v === 'review' || v === 'task') && S.quiz && S.quiz.state === 'q' && !S.quiz.ans && /^[1-4]$/.test(e.key)) {
+  if ((v === 'quiz' || v === 'review' || v === 'task' || (v === 'lesson' && S.route.tab === 'quiz')) && S.quiz && S.quiz.state === 'q' && !S.quiz.ans && /^[1-4]$/.test(e.key)) {
     const id = S.quiz.list[S.quiz.i].opts[+e.key - 1]; if (id) answer(id);
   }
   if (v === 'quick' && S.qt && quickState() === 'q' && /^[1-4]$/.test(e.key)) {
     const id = S.qt.list[S.qt.ans.length].opts[+e.key - 1]; if (id) qtAnswer(id);
   }
   if (v === 'lesson' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft') && !e.altKey && !e.metaKey && !e.ctrlKey) {
-    const to = e.key === 'ArrowRight' ? nextPage(S.route.n) : prevPage(S.route.n);
-    if (to) location.hash = '#/lesson/' + to;
+    if (S.route.tab === 'cards' || S.route.tab === 'quiz') return;   /* the arrows belong to the cards / quiz there */
+    const to = e.key === 'ArrowRight' ? navNext(S.route.n) : navPrev(S.route.n);
+    if (to) location.hash = '#/lesson/' + to + (S.route.tab === 'read' ? '' : '/' + S.route.tab);
   }
-  if (v === 'cards') {
+  if (v === 'cards' || (v === 'lesson' && S.route.tab === 'cards')) {
     if (e.key === 'ArrowRight') { const b = document.querySelector('[data-act="cardNext"]'); if (b && !b.disabled) b.click(); }
     if (e.key === 'ArrowLeft') { const b = document.querySelector('[data-act="cardPrev"]'); if (b && !b.disabled) b.click(); }
     if ((e.key === ' ' || e.key === 'Enter') && e.target.id === 'flip') { e.preventDefault(); actions.flip(); }

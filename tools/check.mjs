@@ -83,7 +83,18 @@ console.log('2. Language files');
 const LANGS = ['ja', 'easy', 'en', 'ne', 'fr', 'my', 'bn', 'si', 'id', 'vi', 'zh'];
 const MUST = ['ja', 'easy', 'en'];       // the teacher writes these three
 const dicts = {};
-for (const l of LANGS) dicts[l] = (await imp(`i18n/${l}.js`)).default;
+for (const l of LANGS) {
+  dicts[l] = { ...(await imp(`i18n/${l}.js`)).default };
+  /* the textbook texts (text/<lang>/*.js) are checked together with the screens' texts */
+  const dir = path.join(root, 'text', l);
+  if (fs.existsSync(dir)) for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.js')).sort()) {
+    const part = (await imp(`text/${l}/${f}`)).default;
+    for (const k of Object.keys(part)) if (k in dicts[l]) err(`${l}: "${k}" is in i18n/${l}.js and in text/${l}/${f}`);
+    const want = f === 'fig.js' ? 'fg.' : `ls.${f.replace('.js', '')}.`;
+    for (const k of Object.keys(part)) if (!k.startsWith(want)) err(`text/${l}/${f}: "${k}" belongs in another file (keys here start with ${want})`);
+    Object.assign(dicts[l], part);
+  }
+}
 const en = dicts.en;
 const wordKeys = [...WORDS.flatMap(w => [`w.${w.id}.desc`, `w.${w.id}.tip`]), ...SCENES.map(s => `s.${s.id}`), ...FACTS.map(f => `f.${f.id}`), ...factKeys()];
 wordKeys.forEach(k => { if (!(k in en)) err(`en.js is missing "${k}"`); });
