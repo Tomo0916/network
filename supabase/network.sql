@@ -347,3 +347,5 @@ begin
     begin alter publication supabase_realtime add table public.net_classes;  exception when duplicate_object then null; end;
   end if;
 end $$;
+
+-- learning records per member: see network-progress.sql (run it too)

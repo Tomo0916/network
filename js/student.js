@@ -56,7 +56,7 @@ function bi(k, v, tag = 'span') {
   if (!sec || sec === L()) return one(L());
   return `${one(L())}<${tag} class="bi" lang="${htmlLang(sec)}">${one(sec)}</${tag}>`;
 }
-const save = () => saveProgress(S.progress);
+const save = () => { S.progress.at = Date.now(); saveProgress(S.progress); pushSoon(); };
 
 /* ---------- terms ---------- */
 const speakBtn = w => speakBtnOf(w, T('btn.listen'));
@@ -137,7 +137,7 @@ function headerHTML() {
   </div></header>`;
 }
 function footerHTML() {
-  return `<footer class="foot"><span>${H('foot.saved')}</span><span><a href="teacher.html">${H('foot.teacher')}</a> · <a href="https://github.com/Tomo0916/network">GitHub</a></span></footer>`;
+  return `<footer class="foot"><span>${H(S.cls && BE.enabled ? 'cls.synced' : 'foot.saved')}</span><span><a href="teacher.html">${H('foot.teacher')}</a> · <a href="https://github.com/Tomo0916/network">GitHub</a></span></footer>`;
 }
 const pageHead = (key, sub) => S.route.scope ? '' : `<div class="page-head"><div><h1 class="page-title">${H(key)}</h1>${sub ? `<p class="muted">${sub}</p>` : ''}</div>${rangeSelect()}</div>`;
 
@@ -213,6 +213,44 @@ function forgetClass() {
   if (stopWatch) { stopWatch(); stopWatch = null; }
 }
 let stopWatch = null, pulse = null, wasLive = false;
+
+/* ---------- learning records follow the class account (supabase/network-progress.sql) ----------
+ * In a class, this browser's records are also kept on the server, so a student can go on
+ * on another PC or phone (log in again with nickname + PIN). Without a class nothing is sent. */
+const SYNC_KEYS = ['netw.read', 'netw.lastLesson', 'netw.quicks', 'netw.tasks'];
+const localBundle = () => ({ v: 1, at: S.progress.at || 0, progress: S.progress, extra: Object.fromEntries(SYNC_KEYS.map(k => [k, Store.get(k, null)])) });
+function applyBundle(b) {
+  S.progress = Object.assign({ known: {}, review: {}, stats: {} }, b.progress || {}, { at: b.at || 0 });
+  saveProgress(S.progress);
+  SYNC_KEYS.forEach(k => { const v = b.extra && b.extra[k]; if (v == null) Store.del(k); else Store.set(k, v); });
+}
+/* two copies (server, this browser): the newer one wins; known words, answer counts and finished things are joined */
+function mergeBundles(a, b) {
+  const [win, lose] = (a.at || 0) >= (b.at || 0) ? [a, b] : [b, a];
+  const wp = JSON.parse(JSON.stringify(win.progress || {})), lp = lose.progress || {};
+  wp.known = Object.assign({}, lp.known, wp.known);
+  wp.stats = Object.assign({}, wp.stats);
+  Object.entries(lp.stats || {}).forEach(([id, st]) => { const w = wp.stats[id]; if (!w || st.ok + st.ng > w.ok + w.ng) wp.stats[id] = st; });
+  const we = Object.assign({}, win.extra), le = lose.extra || {};
+  ['netw.read', 'netw.quicks', 'netw.tasks'].forEach(k => { we[k] = Object.assign({}, le[k], we[k]); });
+  if (we['netw.lastLesson'] == null) we['netw.lastLesson'] = le['netw.lastLesson'];
+  return { v: 1, at: Math.max(a.at || 0, b.at || 0), progress: wp, extra: we };
+}
+let pushTimer = null;
+function pushSoon(ms = 4000) { if (!S.cls || !BE.enabled) return; clearTimeout(pushTimer); pushTimer = setTimeout(pushNow, ms); }
+async function pushNow() { clearTimeout(pushTimer); if (!S.cls || !BE.enabled) return; try { await BE.saveProgress(S.cls.id, localBundle()); } catch (e) { /* offline, or network-progress.sql not run yet */ } }
+/* mode: 'merge' (a normal start), 'replace' (logged in again on this device: take the server's copy), 'upload' (just joined) */
+async function pullProgress(mode = 'merge') {
+  if (!S.cls || !BE.enabled) return;
+  try {
+    if (mode !== 'upload') {
+      const row = await BE.loadProgress(S.cls.id);
+      if (row && row.data && row.data.progress) { applyBundle(mode === 'replace' ? row.data : mergeBundles(row.data, localBundle())); render(); }
+    }
+    await pushNow();
+  } catch (e) { /* no table yet: records stay in this browser */ }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && S.cls) pushNow(); });
 async function refreshClass() {
   if (!S.cls) return;
   try {
@@ -237,6 +275,7 @@ async function bootClass() {
   BE.serverNow().then(d => { if (d) S.skew = d.getTime() - Date.now(); }).catch(() => {});
   await refreshClass();
   if (!S.cls) return;
+  pullProgress(S.syncMode || 'merge'); S.syncMode = null;
   BE.flushAttempts();
   if (stopWatch) stopWatch();
   BE.watchClass(S.cls.id, () => refreshClass()).then(f => { stopWatch = f; }).catch(() => {});
@@ -279,7 +318,11 @@ function classHTML() {
     return `<main class="wrap narrow"><div class="page-head"><div><h1 class="page-title">${H('cls.title')}</h1></div></div>
       ${classCardHTML()}
       <section class="card panel"><p class="muted small">${bi('cls.recordTip')}</p>
-        <div class="row-btns left">${t ? '' : ''}<button class="btn btn-ghost" data-act="leaveClass">${H('cls.leave')}</button></div></section></main>`;
+        <p class="muted small">${bi('cls.syncTip')}</p>
+        <div class="row-btns left"><button class="btn btn-primary" data-act="logoutDevice">${I.x}${H('cls.logout')}</button></div>
+        <p class="muted small">${bi('cls.logoutTip')}</p>
+        <div class="row-btns left"><button class="btn btn-ghost btn-sm" data-act="leaveClass">${H('cls.leave')}</button></div>
+        <p class="muted small">${H('cls.leaveTip')}</p></section></main>`;
   }
   const J = S.join;
   return `<main class="wrap narrow"><div class="page-head"><div><h1 class="page-title">${H(J.resume ? 'cls.resumeTitle' : 'cls.join')}</h1><p class="muted">${bi(J.resume ? 'cls.resumeSub' : 'cls.joinSub')}</p></div></div>
@@ -311,6 +354,7 @@ document.addEventListener('submit', async e => {
     const row = J.resume ? await BE.resumeMember(code, nick, pin) : await BE.joinClass(code, nick, pin);
     S.cls = { id: row.id, code: row.code, name: row.name, nick };
     Store.set('netw.class', S.cls); Store.del('netw.taskrun');
+    S.syncMode = J.resume ? 'replace' : 'upload';
     J.busy = false; J.code = '';
     if (location.search) history.replaceState(null, '', location.pathname + '#/');
     location.hash = '#/';
@@ -339,7 +383,7 @@ function finishQuick() {
   const all = Store.get('netw.quicks', {});
   all[qt.id] = { score: qt.ans.filter(a => a.ok).length, n: qt.list.length, at: Date.now(), def: qt.def, ans: qt.ans };
   const keys = Object.keys(all); if (keys.length > 40) delete all[keys[0]];
-  Store.set('netw.quicks', all); Store.del('netw.qrun');
+  Store.set('netw.quicks', all); Store.del('netw.qrun'); pushSoon(1000);
 }
 function quickHTML() {
   if (!S.cls) return taskHTMLorStart();
@@ -448,7 +492,7 @@ function saveTaskRun() {
   if (Q.state === 'done') {
     const done = Store.get('netw.tasks', {});
     done[Q.task.key] = { score: Q.score, n: Q.list.length, at: Date.now() };
-    Store.set('netw.tasks', done); Store.del('netw.taskrun');
+    Store.set('netw.tasks', done); Store.del('netw.taskrun'); pushSoon(1000);
     return;
   }
   Store.set('netw.taskrun', { key: Q.task.key, i: Q.ans ? Q.i + 1 : Q.i, score: Q.score, missed: Q.missed });
@@ -866,7 +910,7 @@ function lessonHTML() {
 }
 /* which lessons were read, and the last one (for "continue reading") */
 const readMap = () => Store.get('netw.read', {});
-function markRead(n) { const m = readMap(); if (!m[n]) { m[n] = Date.now(); Store.set('netw.read', m); } Store.set('netw.lastLesson', n); }
+function markRead(n) { const m = readMap(); if (!m[n]) { m[n] = Date.now(); Store.set('netw.read', m); pushSoon(); } if (Store.get('netw.lastLesson') !== n) { Store.set('netw.lastLesson', n); pushSoon(); } }
 /* the entry to the textbook on the home page and at the top of the contents */
 function textEntryHTML(onToc) {
   if (!PAGE_LIST.length) return '';
@@ -921,6 +965,14 @@ const actions = {
   quizNext() { clearAuto(); const Q = S.quiz; if (Q.i < Q.list.length - 1) { Q.i++; Q.ans = null; } else Q.state = 'done'; if (Q.task) saveTaskRun(); render(); window.scrollTo(0, 0); },
   taskRestart() { clearAuto(); Store.del('netw.taskrun'); S.quiz = null; render(); window.scrollTo(0, 0); },
   joinMode() { S.join.resume = !S.join.resume; S.join.err = ''; render(); },
+  async logoutDevice() {
+    if (!confirm(T('cls.logoutConfirm'))) return;
+    await pushNow();
+    ['netw.progress', 'netw.qrun', 'netw.taskrun', ...SYNC_KEYS].forEach(k => Store.del(k));
+    S.progress = { known: {}, review: {}, stats: {} }; S.quiz = null; S.qt = null;
+    forgetClass(); await BE.signOutDevice();
+    location.hash = '#/'; render(); toast(T('cls.loggedOut'));
+  },
   leaveClass() {
     if (!confirm(T('cls.leaveConfirm'))) return;
     const id = S.cls.id;

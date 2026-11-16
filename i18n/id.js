@@ -1127,5 +1127,12 @@ export default {
   "lsn.tabWords": "Istilah",
   "lsn.tabCards": "Kartu",
   "lsn.tabQuiz": "Kuis",
-  "lsn.soon": "Penjelasan pelajaran ini belum siap. Istilah, kartu, dan kuis bisa dipakai."
+  "lsn.soon": "Penjelasan pelajaran ini belum siap. Istilah, kartu, dan kuis bisa dipakai.",
+  "cls.syncTip": "Selama Anda ada di kelas, kemajuan belajar (istilah yang dikuasai, ulangan, tingkat benar, pelajaran yang dibaca, hasil tes cepat) juga disimpan di kelas. Di PC atau ponsel lain, pilih \"lanjutkan\" dengan kode kelas, nama panggilan, dan nomor yang sama.",
+  "cls.logout": "Keluar dari perangkat ini",
+  "cls.logoutTip": "Di perangkat yang dipakai bersama, seperti PC sekolah, selalu keluar setelah selesai. Kemajuan di perangkat ini dihapus, tetapi tetap tersimpan di kelas.",
+  "cls.logoutConfirm": "Keluar dari perangkat ini? Kemajuan tetap tersimpan di kelas; masuk lagi dengan nama panggilan dan nomor untuk melanjutkan.",
+  "cls.loggedOut": "Anda sudah keluar.",
+  "cls.synced": "Kemajuan belajar disimpan di perangkat ini dan di kelas.",
+  "cls.leaveTip": "\"Keluar dari kelas\" juga menghapus kemajuan yang tersimpan di kelas. Biasanya gunakan \"Keluar dari perangkat\"."
 };

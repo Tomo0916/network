@@ -1127,5 +1127,12 @@ export default {
   "lsn.tabWords": "Terms",
   "lsn.tabCards": "Cards",
   "lsn.tabQuiz": "Quiz",
-  "lsn.soon": "The explanation of this lesson is not ready yet. Terms, cards and the quiz can be used."
+  "lsn.soon": "The explanation of this lesson is not ready yet. Terms, cards and the quiz can be used.",
+  "cls.syncTip": "While you are in a class, your progress (known words, review, correct rate, lessons read, quick test results) is also saved with the class. On another PC or phone, choose \"continue\" with the same class code, nickname and number to go on.",
+  "cls.logout": "Log out of this device",
+  "cls.logoutTip": "On a device other people also use, such as a school PC, always log out when you finish. Your progress on this device is removed, but it stays with the class.",
+  "cls.logoutConfirm": "Log out of this device? Your progress stays with the class; log in again with your nickname and number to go on.",
+  "cls.loggedOut": "You have logged out.",
+  "cls.synced": "Your progress is saved on this device and with the class.",
+  "cls.leaveTip": "\"Leave the class\" also deletes your progress kept with the class. Normally use \"Log out\"."
 };

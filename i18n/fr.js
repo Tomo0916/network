@@ -1127,5 +1127,12 @@ export default {
   "lsn.tabWords": "Termes",
   "lsn.tabCards": "Cartes",
   "lsn.tabQuiz": "Quiz",
-  "lsn.soon": "L'explication de cette leçon n'est pas encore prête. Les termes, les cartes et le quiz sont disponibles."
+  "lsn.soon": "L'explication de cette leçon n'est pas encore prête. Les termes, les cartes et le quiz sont disponibles.",
+  "cls.syncTip": "Pendant que vous êtes dans une classe, votre progression (mots connus, révision, taux de réussite, leçons lues, résultats des tests rapides) est aussi enregistrée avec la classe. Sur un autre PC ou téléphone, choisissez « continuer » avec le même code, pseudo et numéro.",
+  "cls.logout": "Se déconnecter de cet appareil",
+  "cls.logoutTip": "Sur un appareil partagé, comme un PC de l'école, déconnectez-vous toujours à la fin. La progression est effacée de cet appareil mais reste avec la classe.",
+  "cls.logoutConfirm": "Se déconnecter de cet appareil ? Votre progression reste avec la classe ; reconnectez-vous avec votre pseudo et votre numéro pour continuer.",
+  "cls.loggedOut": "Vous êtes déconnecté.",
+  "cls.synced": "Votre progression est enregistrée sur cet appareil et avec la classe.",
+  "cls.leaveTip": "« Quitter la classe » efface aussi la progression gardée avec la classe. Utilisez normalement « Se déconnecter »."
 };

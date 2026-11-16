@@ -1127,5 +1127,12 @@ export default {
   "lsn.tabWords": "Thuật ngữ",
   "lsn.tabCards": "Thẻ",
   "lsn.tabQuiz": "Câu đố",
-  "lsn.soon": "Phần giải thích của bài này chưa có. Vẫn dùng được thuật ngữ, thẻ và câu đố."
+  "lsn.soon": "Phần giải thích của bài này chưa có. Vẫn dùng được thuật ngữ, thẻ và câu đố.",
+  "cls.syncTip": "Khi bạn ở trong lớp, tiến độ học (từ đã thuộc, ôn tập, tỉ lệ đúng, bài đã đọc, kết quả kiểm tra nhanh) cũng được lưu cùng lớp. Trên PC hoặc điện thoại khác, chọn \"tiếp tục\" với cùng mã lớp, biệt danh và số.",
+  "cls.logout": "Đăng xuất khỏi thiết bị này",
+  "cls.logoutTip": "Trên thiết bị dùng chung như PC ở trường, hãy luôn đăng xuất khi xong. Tiến độ trên thiết bị này bị xóa nhưng vẫn còn trong lớp.",
+  "cls.logoutConfirm": "Đăng xuất khỏi thiết bị này? Tiến độ vẫn còn trong lớp; đăng nhập lại bằng biệt danh và số để học tiếp.",
+  "cls.loggedOut": "Đã đăng xuất.",
+  "cls.synced": "Tiến độ học được lưu trên thiết bị này và trong lớp.",
+  "cls.leaveTip": "\"Rời lớp\" sẽ xóa cả tiến độ lưu trong lớp. Thông thường hãy dùng \"Đăng xuất\"."
 };

@@ -62,6 +62,24 @@ export async function leaveClass(classId) {
   if (data.session) await sb.from('net_members').delete().eq('class_id', classId).eq('user_id', data.session.user.id);
 }
 
+/* ---------- learning records, kept with the class account (supabase/network-progress.sql) ---------- */
+/** → { data, updated_at } or null */
+export async function loadProgress(classId) {
+  const sb = await client(); const s = await session(sb);
+  const { data, error } = await sb.from('net_progress').select('data, updated_at').eq('class_id', classId).eq('user_id', s.user.id).maybeSingle();
+  if (error) throw known(Object.assign(new Error(error.message), { code: error.code }));
+  return data;
+}
+export async function saveProgress(classId, data) {
+  const sb = await client(); const s = await session(sb);
+  check(await sb.from('net_progress').upsert({ class_id: classId, user_id: s.user.id, data }, { onConflict: 'class_id,user_id' }));
+}
+/** forget this browser's anonymous account (the class membership stays; log in again with nickname + PIN) */
+export async function signOutDevice() {
+  try { const sb = await client(); await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* offline */ }
+  Store.del('netw.auth');
+}
+
 /* answers wait in this browser until they are sent, so nothing is lost when the network drops */
 const QKEY = 'netw.queue';
 let flushing = false;
