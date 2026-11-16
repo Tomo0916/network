@@ -14,12 +14,62 @@
  * After the blocks the page always shows the terms of the lesson and a button to its quiz.
  * ========================================================= */
 export const LESSON_PAGES = {
+  11: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'l1Stack', cap: 'cap1' }, { fig: 'bitsSignal', cap: 'cap2' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'media3', cap: 'cap3' },
+    { h: 'h3' }, { p: 'p3' }, { fig: 'nicPath', cap: 'cap4' },
+    { points: 3 }
+  ],
+  12: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'atten', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'noise', cap: 'cap2' },
+    { h: 'h3' }, { p: 'p3' }, { fig: 'collide', cap: 'cap3' },
+    { h: 'h4' }, { p: 'p4' }, { fig: 'repeaterFig', cap: 'cap4' }, { demo: 'repeater' },
+    { points: 3 }
+  ],
   13: [
     { lead: 'lead' },
-    { h: 'h1' }, { p: 'p1' }, { fig: 'hubAll', cap: 'cap1' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'hubAll', cap: 'cap1' }, { fig: 'hubRepeater', cap: 'cap4' },
     { h: 'h2' }, { p: 'p2' }, { fig: 'hubColl', cap: 'cap2' },
     { h: 'h3' }, { p: 'p3' }, { fig: 'collDomain', cap: 'cap3' },
     { h: 'h4' }, { p: 'p4' }, { demo: 'hubswitch', opts: { mode: 'hub' } },
+    { points: 3 }
+  ],
+  14: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'l2Scope', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'frameParts', cap: 'cap2' }, { fig: 'bitstream', cap: 'cap3' },
+    { h: 'h3' }, { p: 'p3' }, { fig: 'syncPreamble', cap: 'cap4' }, { demo: 'frame' },
+    { points: 3 }
+  ],
+  15: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'macStruct', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'cast3', cap: 'cap2' },
+    { h: 'h3' }, { p: 'p3' }, { fig: 'nicFilter', cap: 'cap3' }, { demo: 'cast' },
+    { points: 3 }
+  ],
+  16: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'ethFrame', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'fcsCheck', cap: 'cap2' },
+    { h: 'h3' }, { p: 'p3' }, { fig: 'csmaFlow', cap: 'cap3' }, { demo: 'csmacd' },
+    { points: 3 }
+  ],
+  17: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'learn', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'filterFlood', cap: 'cap2' },
+    { h: 'h3' }, { p: 'p3' }, { fig: 'collDomain', cap: 'cap3' }, { demo: 'hubswitch', opts: { mode: 'switch' } },
+    { points: 3 }
+  ],
+  18: [
+    { lead: 'lead' },
+    { h: 'h1' }, { p: 'p1' }, { fig: 'duplex2', cap: 'cap1' },
+    { h: 'h2' }, { p: 'p2' }, { fig: 'wires', cap: 'cap2' },
+    { h: 'h3' }, { p: 'p3' }, { fig: 'bufferQ', cap: 'cap3' },
     { points: 3 }
   ]
 };

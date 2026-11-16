@@ -373,11 +373,11 @@ function qPrompt(q) {
   const body = {
     s2t: () => H('s.' + q.scene), fact: () => H('f.' + q.fact), d2t: () => H(`w.${w.id}.desc`), tip2t: () => H(`w.${w.id}.tip`),
     e2t: () => `<span class="big-en" lang="en">${esc(w.en)}</span>`, listen: () => `${I.sound} <span lang="ja">${esc(w.yomi || w.term)}</span>`,
-    t2d: () => `<span class="big-term">${termHTML(w)}</span>`
+    t2d: () => `<span class="big-term">${termHTML(w)}</span>${enName(w)}`
   }[q.type]();
   return `<p class="muted">${H('quiz.' + q.type)}</p><div class="sl-q">${body}</div>`;
 }
-const qOptText = (q, v) => q.type === 'fact' ? choiceHTML(FACT_BY_ID[q.fact].opts[+v], (k, x) => T(k, x)) : q.type === 't2d' ? H(`w.${v}.desc`) : termHTML(WORD_BY_ID[v]);
+const qOptText = (q, v) => q.type === 'fact' ? choiceHTML(FACT_BY_ID[q.fact].opts[+v], (k, x) => T(k, x)) : q.type === 't2d' ? H(`w.${v}.desc`) : termHTML(WORD_BY_ID[v]) + (q.type === 'e2t' ? '' : enName(WORD_BY_ID[v]));
 function slideOrder(vd) {
   const f1 = firstAnswers(vd.att);
   const stat = vd.qs.map((q, p) => { const v = Object.values(f1).map(u => u[p]).filter(Boolean); return { p, n: v.length, rate: v.length ? v.filter(a => a.ok).length / v.length : 2 }; });

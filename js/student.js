@@ -336,7 +336,7 @@ function quickHTML() {
     return `<main class="wrap narrow"><section class="card empty"><div class="empty-icon">${I.flag}</div><h1>${H('cls.quickEnd')}</h1>
       <p class="big-score">${score} / ${qt.list.length}</p>
       <ol class="qt-review">${qt.list.map((x, i) => { const a = qt.ans[i], w = WORD_BY_ID[x.id];
-        const right = x.type === 'fact' ? choiceHTML(FACT_BY_ID[x.fact].opts[0], T) : termHTML(w);
+        const right = x.type === 'fact' ? choiceHTML(FACT_BY_ID[x.fact].opts[0], T) : termHTML(w) + enName(w);
         return `<li class="${a ? (a.ok ? 'ok' : 'ng') : 'skip'}"><span class="mk">${a ? (a.ok ? '○' : '×') : '–'}</span><div><span class="muted small">${H('quiz.' + x.type)}</span><div>${a && a.ok ? right : th('quiz.answerIs', L(), { t: right })}</div></div></li>`; }).join('')}</ol>
       <div class="row-btns"><a class="btn btn-ghost" href="#/">${H('nav.home')}</a></div></section></main>`;
   }
@@ -491,7 +491,7 @@ function cardsHTML() {
       <div class="flip ${C.flipped ? 'is-back' : ''}" id="flip" role="button" tabindex="0" data-act="flip" aria-label="${esc(T('cards.flip'))}" style="--gc:var(--g-${w.group})">
         <div class="inner">
           <div class="face front">${groupTag(GROUP_BY_ID[w.group])}<div class="big-term">${termHTML(w)}</div>${enName(w)}${speakBtn(w)}${k ? `<span class="tag ok">${I.check}${H('cards.known')}</span>` : ''}<span class="hint">${H('cards.flip')}</span></div>
-          <div class="face back">${groupTag(GROUP_BY_ID[w.group])}<div class="term-row"><div class="mid-term">${termHTML(w)}</div>${speakBtn(w)}</div><p class="desc">${bi(`w.${w.id}.desc`)}</p><p class="tip"><b>${H('words.tip')}</b>${bi(`w.${w.id}.tip`)}</p></div>
+          <div class="face back">${groupTag(GROUP_BY_ID[w.group])}<div class="term-row"><div><div class="mid-term">${termHTML(w)}</div>${enName(w)}</div>${speakBtn(w)}</div><p class="desc">${bi(`w.${w.id}.desc`)}</p><p class="tip"><b>${H('words.tip')}</b>${bi(`w.${w.id}.tip`)}</p></div>
         </div>
       </div>
       <div class="cardbar">
@@ -562,7 +562,7 @@ function qBox(q) {
     e2t: () => `<div class="qbox center"><div class="big-en" lang="en">${esc(w.en)}</div></div>`,
     listen: () => canSpeak ? `<div class="qbox center"><button class="listen-big" data-act="speak" data-id="${w.id}" aria-label="${esc(T('btn.listen'))}">${I.sound}</button><p class="muted small">${H('quiz.tapListen')}</p></div>`
       : `<div class="qbox center"><div class="big-en alt" lang="en">${esc(w.en)}</div></div>`,   /* a class assignment on a device that cannot speak */
-    t2d: () => `<div class="qbox center"><div class="big-term">${termHTML(w)}</div></div>`
+    t2d: () => `<div class="qbox center"><div class="big-term">${termHTML(w)}</div>${enName(w)}</div>`
   }[q.type]();
 }
 function qOpt(q, v, shown) {
@@ -570,7 +570,8 @@ function qOpt(q, v, shown) {
   if (q.type === 'fact') return `<span class="fact-opt">${choiceHTML(f.opts[+v], T)}</span>`;
     const o = WORD_BY_ID[v];
     if (q.type === 't2d') return `<span>${bi(`w.${v}.desc`)}</span>`;
-    if (q.type === 'listen' && !shown) return `<span>${plainTerm(o)}</span>`;
+    /* listening: no reading (it would give the sound away); the English name only when the question is spoken */
+    if (q.type === 'listen' && !shown) return `<span>${plainTerm(o)}${canSpeak ? enName(o) : ''}</span>`;
     if (q.type === 'e2t') return `<span>${termHTML(o)}</span>`;
   return `<span>${termHTML(o)}${enName(o)}</span>`;
 }
@@ -596,7 +597,7 @@ function quizHTML() {
       <h1>${H(task ? 'cls.taskFinished' : review ? 'review.finished' : pct === 1 ? 'quiz.perfect' : pct >= .7 ? 'quiz.good' : 'quiz.tryAgain')}</h1>
       <p class="big-score">${Q.score} / ${n}</p>
       ${missed.length ? `<div class="missed"><h2>${H('quiz.missed')}</h2><p class="muted small">${H('quiz.toReview')}</p>
-        <ul>${missed.map(id => { const w = WORD_BY_ID[id]; return `<li><div class="term-row">${termHTML(w)}${speakBtn(w)}</div><div>${bi(`w.${id}.desc`)}</div></li>`; }).join('')}</ul></div>` : ''}
+        <ul>${missed.map(id => { const w = WORD_BY_ID[id]; return `<li><div class="term-row"><div>${termHTML(w)}${enName(w)}</div>${speakBtn(w)}</div><div>${bi(`w.${id}.desc`)}</div></li>`; }).join('')}</ul></div>` : ''}
       <div class="row-btns">${task ? `<button class="btn btn-primary" data-act="taskRestart">${I.reset}${H('btn.again')}</button><a class="btn btn-ghost" href="#/">${H('nav.home')}</a>`
         : `<button class="btn btn-primary" data-act="quizStart" data-mode="${Q.mode || 'mix'}">${I.reset}${H('btn.again')}</button><button class="btn btn-ghost" data-act="quizMenu">${H('quiz.other')}</button>`}</div></section></main>`;
   }

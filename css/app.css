@@ -807,3 +807,53 @@ body.presenter .lsn-p, body.presenter .lsn-lead { font-size: 1.25rem; }
   .wt-term .term { font-size: 11pt; }
   .wt-lsn a { color: inherit; text-decoration: none; }
 }
+
+/* lesson figures: shared pieces */
+.ft { font-family: var(--sans); font-size: 13px; fill: var(--ink); }
+.ft.small { font-size: 11.5px; } .ft.big { font-size: 18px; font-weight: 700; } .ft.b { font-weight: 700; }
+.ft.mono { font-family: var(--mono); } .ft.stream { font-size: 11px; letter-spacing: .02em; }
+.ft.accent { fill: var(--accent); } .ft.bad { fill: var(--bad); } .ft.ok { fill: var(--ok); } .ft.inv { fill: var(--accent-ink); } .ft.l3t { fill: var(--g-l3); }
+.fb rect { fill: var(--surface-2); stroke: var(--ink-3); stroke-width: 1.5; }
+.fb text { fill: var(--ink); font-family: var(--sans); font-size: 12.5px; font-weight: 700; }
+.fb .fsub, .fcell .fsub { font-size: 10.5px; font-weight: 500; fill: var(--ink-3); font-family: var(--mono); }
+.fb.hl rect { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+.fb.dim rect { fill: var(--surface); stroke: var(--line-2); } .fb.dim text { fill: var(--ink-3); font-weight: 500; }
+.fb.dev rect { fill: var(--accent); stroke: none; } .fb.dev text { fill: var(--accent-ink); font-family: var(--mono); }
+.fb.ok rect { fill: var(--ok-soft); stroke: var(--ok); } .fb.ng rect { fill: var(--bad-soft); stroke: var(--bad); }
+.fb.q rect { fill: var(--warn-soft); stroke: var(--warn); }
+.fb.mono-ok text { font-family: var(--mono); font-size: 12px; }
+.fline { stroke: var(--line-2); stroke-width: 2.5; fill: none; }
+.fline.dash { stroke-dasharray: 3 5; stroke-width: 1; stroke: var(--ink-3); }
+.fline.cable { stroke: var(--line); stroke-width: 12; stroke-linecap: round; }
+.fline.hot { stroke: var(--accent); stroke-width: 3; }
+.fline.acc { stroke: var(--accent); }
+.flow.thin { stroke-width: 3; }
+.flow.l3 { stroke: var(--g-l3); }
+.flow.dim { opacity: .35; }
+.fwave { fill: none; stroke: var(--accent); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; }
+.fwave.alt { stroke: var(--g-l1); } .fwave.alt2 { stroke: var(--g-l2); } .fwave.bad { stroke: var(--bad); } .fwave.dim { opacity: .55; }
+.fpanel { fill: var(--surface-2); stroke: var(--line); }
+.fzone { fill: color-mix(in srgb, var(--accent) 6%, transparent); stroke: var(--accent); stroke-dasharray: 6 5; }
+.fpc rect { fill: var(--surface); stroke: var(--ink-2); stroke-width: 2; } .fpc path { stroke: var(--ink-2); stroke-width: 2; fill: none; }
+.ftube { fill: color-mix(in srgb, var(--accent) 10%, var(--surface)); stroke: var(--ink-3); }
+.flight { fill: var(--warn); }
+.fq { fill: var(--bad-soft); fill-opacity: .45; stroke: var(--bad); stroke-dasharray: 4 3; }
+.fcell rect, .fcellbg { stroke: var(--surface); stroke-width: 2; }
+.fcell text { font-family: var(--sans); font-size: 12.5px; font-weight: 700; fill: var(--ink); }
+.fcell.mono text { font-family: var(--mono); font-size: 15px; }
+.c0 rect, .fcellbg.c0 { fill: color-mix(in srgb, var(--g-l1) 22%, var(--surface)); }
+.c1 rect, .fcellbg.c1 { fill: color-mix(in srgb, var(--g-l2) 22%, var(--surface)); }
+.c2 rect, .fcellbg.c2 { fill: color-mix(in srgb, var(--g-devices) 18%, var(--surface)); }
+.c3 rect, .fcellbg.c3 { fill: color-mix(in srgb, var(--g-addressing) 24%, var(--surface)); }
+.fcell.broken rect { fill: var(--bad-soft); }
+.fzap { stroke: var(--bad); stroke-width: 3; fill: none; }
+.fbrace { fill: none; stroke: var(--ink-3); stroke-width: 1.5; }
+.fdot { fill: var(--surface); stroke: var(--ink-3); stroke-width: 2; }
+.fdot.on { fill: var(--ok-soft); stroke: var(--ok); stroke-width: 3; }
+.fdot.src { fill: var(--accent); stroke: var(--accent); }
+.ftable rect:first-child { fill: var(--surface); stroke: var(--line-2); }
+.fnew { fill: var(--accent-soft); }
+.fenv rect { fill: var(--surface); stroke: var(--accent); stroke-width: 2; } .fenv path { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.fdevbox { fill: var(--accent); } .fbuf { fill: var(--surface); stroke: var(--accent-soft); stroke-width: 3; }
+.lsn-fig svg .ft.inv { fill: var(--accent-ink); }
+.qt-review .en-name { display: inline; margin-left: 6px; }
