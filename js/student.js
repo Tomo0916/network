@@ -6,12 +6,15 @@
  *          #/quiz         4-choice quiz      #/sort    sorting game
  *          #/review       today's review     #/demos/<id>  animations
  *          #/class        join a class       #/task    the class assignment   #/quick  the quick test
+ *          #/text         the textbook contents (lessons)   #/lesson/<n>  the explanation page of a lesson
  * URL options:  ?lang=vi   ?range=lesson-13   ?present=1   ?class=<class code>
  * Progress is stored by word id, so switching language never touches it.
  * ========================================================= */
 import { LANGS, loadLang, detectLang, htmlLang, t, th, esc } from './i18n.js';
 import { WORDS, WORD_BY_ID } from './words.js';
-import { GROUP_BY_ID, DEMOS } from './groups.js';
+import { GROUP_BY_ID, DEMOS, CHAPTERS } from './groups.js';
+import { LESSON_PAGES, hasPage, termRefs } from './lessons.js';
+import { FIGURES } from './figures.js';
 import { RANGES, RANGE_SETS, isRange, wordsIn, groupsIn, makeQuiz, makeSort, poolSize, taskQuiz, taskKey, qidOf } from './quiz.js';
 import { FACT_BY_ID } from './facts.js';
 import { Store, loadSettings, saveSettings, loadProgress, saveProgress, recordAnswer, dueWords } from './store.js';
@@ -73,6 +76,8 @@ function parseRoute() {
   const h = location.hash.replace(/^#\/?/, '').split('/');
   if (['words', 'cards', 'quiz', 'sort', 'review', 'class', 'task', 'quick'].includes(h[0])) return { view: h[0] };
   if (h[0] === 'demos') return { view: 'demos', id: DEMOS.includes(h[1]) ? h[1] : DEMOS[0] };
+  if (h[0] === 'text') return { view: 'text' };
+  if (h[0] === 'lesson' && hasPage(Number(h[1]))) return { view: 'lesson', n: Number(h[1]) };
   return { view: 'home' };
 }
 window.addEventListener('hashchange', () => {
@@ -86,21 +91,22 @@ window.addEventListener('hashchange', () => {
 function render() {
   applySettings(S.settings, htmlLang(L()));
   const v = S.route.view;
-  const body = { home: homeHTML, words: wordsHTML, cards: cardsHTML, quiz: quizHTML, review: quizHTML, task: quizHTML, sort: sortHTML, demos: demosHTML, class: classHTML, quick: quickHTML }[v]();
-  document.title = (v === 'home' ? '' : T(v === 'task' ? 'cls.task' : v === 'class' ? 'cls.title' : v === 'quick' ? 'cls.quick' : 'nav.' + v) + ' · ') + T('app.name');
+  const body = { home: homeHTML, words: wordsHTML, cards: cardsHTML, quiz: quizHTML, review: quizHTML, task: quizHTML, sort: sortHTML, demos: demosHTML, class: classHTML, quick: quickHTML, text: textHTML, lesson: lessonHTML }[v]();
+  document.title = (v === 'home' ? '' : (v === 'lesson' ? T('lesson.' + S.route.n) : T(v === 'task' ? 'cls.task' : v === 'class' ? 'cls.title' : v === 'quick' ? 'cls.quick' : 'nav.' + v)) + ' · ') + T('app.name');
   app.innerHTML = headerHTML() + liveBanner() + body + footerHTML();
   if (v === 'demos') mountDemo(S.route.id);
+  if (v === 'lesson') document.querySelectorAll('[data-demo]').forEach(el => mountDemoIn(el, el.dataset.demo, JSON.parse(el.dataset.opts || '{}')));
   if (v === 'quiz' || v === 'review' || v === 'task') afterQuizRender();
   if (v === 'quick') afterQuickRender();
   if (v === 'words') { const s = document.getElementById('search'); if (s && S.query) { s.focus(); s.setSelectionRange(S.query.length, S.query.length); } }
 }
 function headerHTML() {
-  const due = dueWords(S.progress).length, v = S.route.view;
+  const due = dueWords(S.progress).length, v = S.route.view === 'lesson' ? 'text' : S.route.view;
   const a = (r, icon, key, extra = '') => `<a href="#/${r}" class="${v === (r.split('/')[0] || 'home') ? 'on' : ''}" title="${esc(T(key))}">${icon}<span>${H(key)}</span>${extra}</a>`;
   return `<header class="topbar"><div class="topbar-in">
     <a class="brand" href="#/"><span class="brand-mark">${I.net}</span><span class="brand-name">${H('app.name')}</span></a>
     <nav class="topnav">
-      ${a('', I.home, 'nav.home')}${a('words', I.list, 'nav.words')}${a('cards', I.cards, 'nav.cards')}${a('quiz', I.quiz, 'nav.quiz')}${a('sort', I.sort, 'nav.sort')}
+      ${a('', I.home, 'nav.home')}${a('text', I.book, 'nav.text')}${a('words', I.list, 'nav.words')}${a('cards', I.cards, 'nav.cards')}${a('quiz', I.quiz, 'nav.quiz')}${a('sort', I.sort, 'nav.sort')}
       ${a('review', I.repeat, 'nav.review', due ? `<b class="badge">${due}</b>` : '')}${a('demos/' + DEMOS[0], I.play, 'nav.demos')}
       ${S.cls && S.klass && S.klass.task ? a('task', I.flag, 'cls.task', taskDone() ? '' : '<b class="badge dot"></b>') : ''}
     </nav>
@@ -647,15 +653,71 @@ function demosHTML() {
     <div id="demo-root"><div class="loading"><div class="spinner"></div></div></div></main>`;
 }
 async function mountDemo(id) {
+  const el = document.getElementById('demo-root');
+  if (el) mountDemoIn(el, id, {}, () => S.route.id === id);
+}
+/** start animation `id` inside el (also used on the lesson pages) */
+async function mountDemoIn(el, id, opts, still = () => true) {
   const [mod, kit] = await Promise.all([import(`./demos/${id}.js`).then(m => m.default), import('./demos/kit.js')]);
   kit.setSpeed(S.settings.demoSpeed || 1);
-  const el = document.getElementById('demo-root');
-  if (!el || S.route.id !== id) return;
+  if (!el.isConnected || !still()) return;
   mod.mount(el, {
     T, H: (k, v) => bi(k, v),
     term: wid => WORD_BY_ID[wid].term,
     termHTML: wid => termHTML(WORD_BY_ID[wid])
-  });
+  }, opts);
+}
+
+/* ---------- textbook: contents and lesson pages ---------- */
+/** [[id:text]] in a lesson text → a button that opens the term */
+const linkTerms = html => html.replace(/\[\[([a-z0-9]+):(.*?)\]\]/g, (m, id, txt) => WORD_BY_ID[id]
+  ? `<button class="tterm" data-act="termPop" data-id="${id}" style="--gc:var(--g-${WORD_BY_ID[id].group})">${txt}</button>` : txt);
+const lessonWords = n => WORDS.filter(w => w.lesson === n);
+function textHTML() {
+  return `<main class="wrap narrow"><div class="page-head"><div><h1 class="page-title">${H('lsn.title')}</h1><p class="muted">${bi('lsn.sub')}</p></div></div>
+    ${CHAPTERS.map(c => `<section class="card toc"><h2 class="toc-ch"><span class="ch-no">${c.n}</span>${H('ch.' + c.n)}</h2><ol class="toc-list">
+      ${Array.from({ length: c.to - c.from + 1 }, (_, i) => c.from + i).map(n => {
+        const ws = lessonWords(n), page = hasPage(n);
+        const inner = `<span class="toc-n">${H('range.lesson', { n })}</span><span class="toc-t">${H('lesson.' + n)}</span>`;
+        return `<li class="${page ? 'has-page' : ''}">${page ? `<a href="#/lesson/${n}">${inner}<span class="tag accent">${I.book}${H('lsn.read')}</span></a>` : `<div>${inner}${ws.length ? `<button class="linkbtn" data-act="lessonQuiz" data-n="${n}">${I.quiz}${H('lsn.quizShort', { n: ws.length })}</button>` : ''}</div>`}</li>`;
+      }).join('')}</ol></section>`).join('')}
+  </main>`;
+}
+function lessonHTML() {
+  const n = S.route.n, blocks = LESSON_PAGES[n], k = key => `ls.${n}.${key}`;
+  const ch = CHAPTERS.find(c => n >= c.from && n <= c.to);
+  const ws = lessonWords(n);
+  const refs = [...new Set(blocks.flatMap(b => ['lead', 'p'].filter(f => b[f]).flatMap(f => termRefs(t(k(b[f]), L())))))].filter(id => WORD_BY_ID[id] && !ws.some(w => w.id === id));
+  let fig = 0;
+  const body = blocks.map(b => {
+    if (b.lead) return `<p class="lsn-lead">${linkTerms(bi(k(b.lead)))}</p>`;
+    if (b.h) return `<h2 class="lsn-h">${bi(k(b.h))}</h2>`;
+    if (b.p) return `<p class="lsn-p">${linkTerms(bi(k(b.p)))}</p>`;
+    if (b.fig) { fig++; return `<figure class="lsn-fig card">${FIGURES[b.fig](T)}<figcaption><b>${H('lsn.fig', { n: fig })}</b> ${bi(k(b.cap))}</figcaption></figure>`; }
+    if (b.demo) return `<section class="lsn-demo"><h3 class="lsn-demo-h">${I.play}${H('lsn.try')} — ${H('demo.' + b.demo)}</h3><div data-demo="${b.demo}" data-opts='${esc(JSON.stringify(b.opts || {}))}'><div class="loading"><div class="spinner"></div></div></div></section>`;
+    if (b.points) return `<section class="lsn-points"><h2>${I.bulb}${H('lsn.points')}</h2><ol>${Array.from({ length: b.points }, (_, i) => `<li>${linkTerms(bi(k('pt' + (i + 1))))}</li>`).join('')}</ol></section>`;
+    return '';
+  }).join('');
+  const tcard = w => `<button class="lsn-term card" data-act="termPop" data-id="${w.id}" style="--gc:var(--g-${w.group})"><span class="term-row"><span>${termHTML(w)}${enName(w)}</span></span><span class="lsn-term-d">${bi(`w.${w.id}.desc`)}</span></button>`;
+  return `<main class="wrap lsn">
+    <nav class="crumb"><a href="#/text">${H('lsn.title')}</a> › <span>${H('ch.' + ch.n)}</span></nav>
+    <header class="lsn-head"><span class="lsn-no">${H('range.lesson', { n })}</span><h1>${bi('lesson.' + n)}</h1></header>
+    <p class="lsn-tip muted">${I.bulb}${H('lsn.tapTip')}</p>
+    ${body}
+    <section class="lsn-terms"><h2>${H('lsn.terms')}</h2><div class="lsn-tgrid">${ws.map(tcard).join('')}</div>
+      ${refs.length ? `<h3>${H('lsn.related')}</h3><div class="lsn-tgrid">${refs.map(id => tcard(WORD_BY_ID[id])).join('')}</div>` : ''}</section>
+    <div class="lsn-cta card"><div><b>${H('lsn.quizTitle')}</b><p class="muted">${bi('lsn.quizSub', { n: ws.length })}</p></div>
+      <button class="btn btn-primary" data-act="lessonQuiz" data-n="${n}">${I.quiz}${H('lsn.quizGo')}${I.next}</button></div>
+    <nav class="lsn-nav"><a class="btn btn-ghost" href="#/text">${I.list}${H('lsn.toc')}</a></nav>
+  </main>`;
+}
+function termPop(id) {
+  const w = WORD_BY_ID[id];
+  modal(`<div class="modal-head"><h2 class="term-row">${termHTML(w)}${speakBtn(w)}</h2><button class="icon-btn" data-act="closeModal" aria-label="${esc(T('btn.close'))}">${I.x}</button></div>
+    <div class="modal-body">${enName(w)} ${groupTag(GROUP_BY_ID[w.group])}
+      <p class="desc">${bi(`w.${w.id}.desc`)}</p><p class="tip"><b>${H('words.tip')}</b>${bi(`w.${w.id}.tip`)}</p>
+      ${w.lesson && hasPage(w.lesson) && !(S.route.view === 'lesson' && S.route.n === w.lesson) ? `<p><a href="#/lesson/${w.lesson}" data-act="goLesson" data-n="${w.lesson}">${I.book}${H('range.lesson', { n: w.lesson })} ${H('lesson.' + w.lesson)}</a></p>` : ''}
+    </div>`);
 }
 
 /* =========================================================
@@ -674,6 +736,9 @@ const actions = {
     save(); S.cards.flipped = false; render();
   },
   cardsReset() { words().forEach(w => delete S.progress.known[w.id]); save(); S.cards.i = 0; render(); },
+  termPop(el) { termPop(el.dataset.id); },
+  goLesson(el) { closeModal(); location.hash = '#/lesson/' + el.dataset.n; },
+  lessonQuiz(el) { S.settings.range = 'lesson-' + el.dataset.n; saveSettings(S.settings); S.quiz = null; location.hash = '#/quiz'; },
   quizStart(el) { startQuiz(S.route.view === 'review', el.dataset.mode || 'mix'); render(); },
   quizMenu() { clearAuto(); S.quiz = null; render(); },
   answer(el) { answer(el.dataset.id); },

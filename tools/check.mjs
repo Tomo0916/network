@@ -24,6 +24,8 @@ const { makeQuestion, RANGES, wordsIn } = await imp('js/quiz.js');
 const { SCENES } = await imp('js/scenes.js');
 const { FACTS, factKeys } = await imp('js/facts.js');
 const { makeQuiz, poolSize } = await imp('js/quiz.js');
+const { LESSON_PAGES, lessonKeys, termRefs } = await imp('js/lessons.js');
+const WORD_BY_ID = Object.fromEntries(WORDS.map(w => [w.id, w]));
 
 let errors = 0, warnings = 0;
 const err = (...a) => { errors++; console.log('  ✗', ...a); };
@@ -113,7 +115,7 @@ for (const l of LANGS) {
 /* ---------- 3. keys used by the screens ---------- */
 console.log('3. Text keys used in the code');
 const used = new Set();
-for (const f of ['js/student.js', 'js/teacher.js', 'js/common.js', ...DEMOS.map(d => `js/demos/${d}.js`)]) {
+for (const f of ['js/student.js', 'js/teacher.js', 'js/common.js', 'js/figures.js', ...DEMOS.map(d => `js/demos/${d}.js`)]) {
   const src = fs.readFileSync(path.join(root, f), 'utf8');
   for (const m of src.matchAll(/\b(?:T|H|bi)\(\s*'([a-z]+(?:\.[A-Za-z0-9]+)+)'(?!\s*\+)/g)) used.add(m[1]);
   for (const m of src.matchAll(/'((?:dm|quiz|cards|review|home|words|sort|btn|set|pres|prog|range|demos?|layer|nav|mode|t|foot)\.[A-Za-z0-9]+)'(?!\s*\+)/g)) used.add(m[1]);
@@ -128,6 +130,15 @@ GROUPS.forEach(g => used.add('g.' + g.id));
 LAYERS.forEach(l => used.add('layer.' + l));
 DEMOS.forEach(d => used.add('demo.' + d));
 for (let i = 0; i < 6; i++) used.add('dm.cs' + i);
+lessonKeys().forEach(k => used.add(k));
+for (const n of Object.keys(LESSON_PAGES)) used.add('lesson.' + n);
+/* lesson texts: [[id:…]] must name a real term, and every language links the same terms */
+for (const k of lessonKeys()) for (const [l, d] of Object.entries(dicts)) {
+  if (!(k in d)) continue;
+  const refs = termRefs(d[k]);
+  refs.filter(id => !WORD_BY_ID[id]).forEach(id => err(`${l}.js "${k}": [[${id}:…]] is not a term`));
+  if (refs.sort().join() !== termRefs(en[k]).sort().join()) err(`${l}.js "${k}": linked terms differ from en.js`);
+}
 for (let i = 0; i < 5; i++) used.add('dm.fr' + i);
 ['Dst', 'Src', 'Type', 'Data', 'Fcs'].forEach(f => used.add('dm.f' + f));
 used.forEach(k => { if (!(k in en)) err(`en.js is missing "${k}" (used by the app)`); });

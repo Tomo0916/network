@@ -9,15 +9,15 @@ const SCRIPT = [['A', 'C'], ['C', 'A'], ['A', 'C'], ['D', 'B']];
 
 export default {
   id: 'hubswitch',
-  mount(el, ctx) {
-    const st = { mode: 'switch', table: {}, busy: false };
+  mount(el, ctx, opts = {}) {
+    const st = { mode: opts.mode === 'hub' ? 'hub' : 'switch', table: {}, busy: false };
     el.innerHTML = `<div class="demo">
       <div class="stage card"><svg viewBox="0 0 400 300" role="img" aria-label="${ctx.T('demo.hubswitch')}"></svg></div>
       <div class="demo-side">
         <div class="narr" aria-live="polite"></div>
         <div class="seg" role="group">
-          <label class="seg-i"><input type="radio" name="hs-mode" value="hub"><span lang="ja">${ctx.term('hub')}</span></label>
-          <label class="seg-i"><input type="radio" name="hs-mode" value="switch" checked><span lang="ja">${ctx.term('switch')}</span></label>
+          <label class="seg-i"><input type="radio" name="hs-mode" value="hub" ${st.mode === 'hub' ? 'checked' : ''}><span lang="ja">${ctx.term('hub')}</span></label>
+          <label class="seg-i"><input type="radio" name="hs-mode" value="switch" ${st.mode === 'switch' ? 'checked' : ''}><span lang="ja">${ctx.term('switch')}</span></label>
         </div>
         <div class="demo-ctl">
           <label>${ctx.H('dm.from')} <select data-k="src">${KEYS.map(k => `<option ${k === 'A' ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
